@@ -19,6 +19,8 @@ from MDAnalysis.coordinates.memory import MemoryReader
 from MDAnalysis.analysis.base import AnalysisFromFunction
 import argparse
 
+#/Scr/hyunpark/anaconda3/envs/deeplearning
+
 def get_args():
     parser = argparse.ArgumentParser(description='Training')
 
