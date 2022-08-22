@@ -142,10 +142,34 @@ class Model(pl.LightningModule):
         loss = torch.sum(list(map(lambda coeff_, loss_: coeff_ * loss_, (*coeffs), (kl, mse, rmsd, tm, mat) )))
         return loss, kl, mse, rmsd, tm, mat   
 
-    def lerp(self, inputs: "1D tensor of features", outputs: "1D tensor of features", interps: "1D tensor of weights"=1):
-        outs = inputs + (outputs - inputs) * interps.view(-1,1).to(inputs)
+    def lerp(self, start: "1D tensor of features", end: "1D tensor of features", t: "1D tensor of weights"=1):
+        outs = start + (end - start) * t.view(-1,1).to(inputs)
         return outs
 
+    def _geometric_slerp(start, end, t):
+        #https://github.com/scipy/scipy/blob/v1.9.0/scipy/spatial/_geometric_slerp.py#L35-L238:~:text=def%20geometric_slerp(,.ndarray%3A
+        
+        # create an orthogonal basis using QR decomposition
+        # One data point and interpolated!
+        start = start.view(1,-1) 
+        end = end.view(1,-1)
+        basis = torch.cat([start,end], dim=0) #shape: (2,dim) #np.vstack([start, end])
+        Q, R = torch.qr(basis.t()) ###SAME as reduced option of np.linalg.qr;;;; transpose -> (dim,2) --> BREAKS down into: (dim,k) and (k,dim)
+        signs = 2 * (torch.diag(R) >= 0) - 1
+        Q = Q.T * signs.T[:, None]
+        R = R.T * signs.T[:, None]
+
+        # calculate the angle between `start` and `end`
+        c = start.view(-1,).dot(end.view(-1,))
+        s = torch.linalg.det(R)
+        omega = torch.atan2(s, c)
+
+        # interpolate
+        start, end = Q
+        s = torch.sin(t * omega)
+        c = torch.cos(t * omega)
+        return start * c[:, None] + end * s[:, None]
+    
     def generate_molecules(self, original: "test loader original coordinates (BL3)", inps: "starting point index, integer", outs: "end point index, integer", interps: "num of interpolations points") -> "Original && Recon_from_original && Lerp":
         """MOVE to pl.Callback!"""
         original = original
