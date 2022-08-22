@@ -962,3 +962,225 @@ class VQVAE_GT(torch.nn.Module):
 
 """
 
+###########################
+##########TEST#############
+###########################
+ref, traj, trajv = ref.to(device), traj.to(device), trajv.to(device)
+T = torch.cat((traj, trajv),dim=0).to(torch.device("cpu"))
+
+"""
+##VQVAE Only
+device = torch.device("cpu")
+CurrentModel = VQVAE
+prev_model_file = None #"ckpt_vqvae.pt"
+current_model_file = "ckpt_vqvae.pt"
+min_encoding_size=int(image_size*0.65)
+model = CurrentModel(n_e=int(min_encoding_size), min_encoding_size=min_encoding_size, image_shape=[image_size]*2, sequence_length=image_size, picture_dim=1, prev_model_file=prev_model_file)
+#device = torch.device("cpu")
+ckpt = torch.load(current_model_file, map_location=device)
+model.load_state_dict(ckpt)
+model.to(device)
+model.eval()
+dist_map = model.dm(T)[:,None,...] / const[0] -0.5 #B1HW with 0-1 range.
+rbf = dist_map #Not real RBF
+encC = model.ec(rbf) #Range of 0-1 input
+z_q, vqloss, (perplexity, min_encodings, min_encoding_indices) = model.vq(encC)
+decC = model.dc(z_q) #Range of 0-1 output
+import matplotlib.pyplot as plt
+fig,ax=plt.subplots(3,1); ax[0].imshow(min_encoding_indices.detach().cpu().numpy()[5]); ax[1].imshow(rbf.detach().cpu().numpy()[5,0]); ax[2].imshow(decC.detach().cpu().numpy()[5,0]); plt.savefig("t1.png")
+"""
+
+
+"""
+##VQVAE-GT
+T = T.to(device)[:5]
+CurrentModel = VQVAE_GT
+prev_model_file = "ckpt_vqvae.pt" #"ckpt_vqvae.pt"
+current_model_file = "ckpt_vqvae_gt.pt"
+min_encoding_size=int(image_size*0.65)
+model = CurrentModel(n_e=int(min_encoding_size), min_encoding_size=min_encoding_size, image_shape=[image_size]*2, sequence_length=image_size, picture_dim=64, prev_model_file=prev_model_file)
+#device = torch.device("cpu")
+ckpt = torch.load(current_model_file, map_location=device)
+model.load_state_dict(ckpt)
+model.to(device)
+model.eval()
+refmean = ref[0].mean(dim=0, keepdim=True)
+ref = ref - refmean
+T = T - refmean[:,None,:]
+ref = ref / 10.
+T = T / 10.
+dist_map = model.transfer_model(T)[:,None,...] / const[0] -0.5 #B1HW with 0-1 range.
+rbf = model.gs2(dist_map) #Not real RBF
+#encC = model.transfer_model.ec(rbf) #Range of 0-1 input
+#z_q, vqloss, (perplexity, min_encodings, min_encoding_indices) = model.transfer_model.vq(encC)
+#decC = model.transfer_model.dc(z_q) #Range of 0-1 output
+rbf_det = rbf.clone()
+rbf_det.set_(rbf).detach()
+#decC_det = decC.clone()
+#decC_det.set_(decC).detach()
+nodes, edges = model.gt(ref.expand_as(T), rbf_det) #Nodes is to T AS decC_det is to rbf_det
+nodes = nodes * 10.
+nodes = nodes + refmean[:,None,:]
+fake_closed = mda.Universe(CRD)
+fake_closed_ca = fake_closed.atoms.select_atoms(atom_selection)
+fake_closed_ca.atoms.positions = nodes[4].detach().cpu().numpy()
+fake_closed_ca.write("fake.pdb")
+"""
+
+"""
+##VQVAE-VAE
+CurrentModel = VQVAE_VAE
+prev_model_file = "ckpt_vqvae.pt" #"ckpt_vqvae.pt"
+current_model_file = "ckpt_vqvae_vae_hook.pt"
+min_encoding_size=int(image_size*0.65)
+model = CurrentModel(n_e=int(min_encoding_size), min_encoding_size=min_encoding_size, image_shape=[image_size]*2, sequence_length=image_size, picture_dim=1, prev_model_file=prev_model_file)
+device = torch.device("cpu")
+ckpt = torch.load(current_model_file, map_location=device)
+model.load_state_dict(ckpt)
+model.to(device)
+model.eval()
+T_ = T.requires_grad_()
+dist_map = model.transfer_model.dm(T_)[:,None,...] / const[0] -0.5 #B1HW with 0-1 range.
+rbf = dist_map #Not real RBF
+encC = model.transfer_model.ec(rbf) #Range of 0-1 input
+z_q, vqloss, (perplexity, min_encodings, min_encoding_indices) = model.transfer_model.vq(encC)
+#decC = model.transfer_model.dc(z_q) #Range of 0-1 output
+recon_scaled, z, mu, logstd, recon = model.vae(min_encoding_indices)
+mei = min_encoding_indices.float()[:3].requires_grad_() #Do not select indices AFTER giving gradient!
+z_, mu_, logstd_ = model.vae.enc(mei)
+z1 = mu_
+lr = 1e4
+fig,ax=plt.subplots(3,2);
+ax[0,0].imshow(mei.detach().cpu().numpy()[0])
+ax[0,1].scatter(*mu_.detach().cpu().numpy().T)
+grads = torch.zeros_like(mei.data)
+for step in tqdm.tqdm(range(1000)):
+    z_, mu_, logstd_ = model.vae.enc(mei); mu_.backward(torch.ones_like(mu_)); mei.data = mei.data - lr * mei.grad.data; grads += lr * mei.grad.data
+z2 = mu_
+ax[1,0].imshow(mei.detach().cpu().numpy()[0])
+ax[1,1].scatter(*mu_.detach().cpu().numpy().T)
+ax[2,0].imshow(mei.detach().cpu().numpy()[0]*0. + min_encoding_indices.float().detach().cpu().numpy()[98]*1.)
+ax[2,1].imshow(grads.detach().cpu().numpy()[0]*1e2, cmap=plt.cm.get_cmap("jet"))
+plt.savefig("vae_backpropZ_codebook.png")
+#import matplotlib.pyplot as plt
+#plt.scatter(*mu.detach().cpu().numpy()[:traj.size(0)].T, c=np.arange(len(mu[:traj.size(0)])), edgecolor='r', linewidth=0.5); 
+#plt.scatter(*mu.detach().cpu().numpy()[traj.size(0):].T, c=np.arange(len(mu[traj.size(0):])), edgecolor='b', linewidth=0.5); 
+#plt.scatter(*mu.detach().cpu().numpy()[:traj.size(0)].T, c='r'); 
+#plt.scatter(*mu.detach().cpu().numpy()[traj.size(0):].T, c='b'); 
+#plt.show()
+#fig,ax=plt.subplots(2,1); ax[0].imshow(min_encoding_indices.detach().cpu().numpy()[15]); ax[1].imshow(recon.detach().cpu().numpy().astype(np.int32)[15]);  plt.show()
+#model.transfer_model.get_codebook_entry()
+"""
+
+
+
+##VQVAE-GAN
+CurrentModel = VQVAE_GAN
+prev_model_file = "ckpt_vqvae.pt" #"ckpt_vqvae.pt"
+current_model_file = "ckpt_vqvae_gan.pt"
+min_encoding_size=int(image_size*0.65)
+
+model = CurrentModel(n_e=int(min_encoding_size), min_encoding_size=min_encoding_size, image_shape=[image_size]*2, sequence_length=image_size, picture_dim=1, prev_model_file=prev_model_file)
+device = torch.device("cpu")
+ckpt = torch.load(current_model_file, map_location=device)
+model.load_state_dict(ckpt)
+model.to(device)
+model.eval()
+
+feat = dict()
+grad_feat = dict()
+def hookf(m, i, o):
+    feat["pd_9"] = o
+def hookb(m, i, o):
+    grad_feat["pd_9"] = o
+model.pd.model[8].register_forward_hook(hookf)
+model.pd.model[8].register_backward_hook(hookb)
+
+dist_map = model.transfer_model.dm(T)[:,None,...] / const[0] -0.5 #B1HW with 0-1 range.
+rbf = dist_map #Not real RBF
+encC = model.transfer_model.ec(rbf) #Range of 0-1 input
+z_q, vqloss, (perplexity, min_encodings, min_encoding_indices) = model.transfer_model.vq(encC)
+decC = model.transfer_model.dc(z_q) #Range of 0-1 output
+
+rbf_det = rbf.clone()
+rbf_det.set_(rbf).detach()
+decC_det = decC.clone()
+decC_det.set_(decC).detach()
+
+def gradcam(plusplus=False, idx=None):
+    fig, ax = plt.subplots(2,2)
+    if idx == None:
+        idx = 0
+
+    losses = model.pd(rbf_det).view(-1,1)
+    losses.backward(gradient=torch.ones_like(losses)) #Just following computational graph...
+    activations = feat["pd_9"]
+    grads = grad_feat["pd_9"][0]
+    if plusplus:
+        grads_power_2 = grads**2
+        grads_power_3 = grads_power_2 * grads
+        sum_activations = torch.sum(activations, dim=(2, 3))
+        eps = torch.finfo().eps
+        aij = grads_power_2 / (2 * grads_power_2 +
+                           sum_activations[:, :, None, None] * grads_power_3 + eps)
+        aij = torch.where(grads != 0., aij, torch.tensor(0.))
+        #weights = torch.amax(grads, dim=0) * aij #Use relu
+        weights = torch.nn.functional.relu(grads) * aij
+        weights = torch.sum(weights, axis=(2, 3)) 
+    else:
+        weights = grads.sum(dim=(2,3)) / (activations.size(2)*activations.size(3))
+    weighted_activations = weights[:, :, None, None] * activations
+    cam = torch.nn.functional.relu(weighted_activations.sum(axis=1))
+    resized_cam = cv2.resize(cam[idx].detach().cpu().numpy(), (rbf_det.size(2), rbf_det.size(3)))
+    resized_cam -= np.min(resized_cam)
+    resized_cam /= np.max(resized_cam)
+    resized_cam_jet = plt.cm.jet(resized_cam)[...,:3]
+    ax[0,0].imshow(rbf.detach().cpu().numpy()[idx,0]); ax[0,0].imshow(resized_cam_jet, alpha=0.8); 
+    ax[1,0].imshow(rbf.detach().cpu().numpy()[idx,0]);
+
+    losses = model.pd(decC_det).view(-1,1)
+    losses.backward(gradient=torch.ones_like(losses)) #Just following computational graph...
+    activations = feat["pd_9"]
+    grads = grad_feat["pd_9"][0]
+    if plusplus:
+        grads_power_2 = grads**2
+        grads_power_3 = grads_power_2 * grads
+        sum_activations = torch.sum(activations, dim=(2, 3))
+        eps = torch.finfo().eps
+        aij = grads_power_2 / (2 * grads_power_2 +
+                           sum_activations[:, :, None, None] * grads_power_3 + eps)
+        aij = torch.where(grads != 0., aij, torch.tensor(0.))
+        #weights = torch.amax(grads, dim=0) * aij #Use relu
+        weights = torch.nn.functional.relu(grads) * aij
+        weights = torch.sum(weights, axis=(2, 3)) 
+    else:
+        weights = grads.sum(dim=(2,3)) / (activations.size(2)*activations.size(3))
+    weights = grads.sum(dim=(2,3)) / (activations.size(2)*activations.size(3))
+    weighted_activations = weights[:, :, None, None] * activations
+    cam = torch.nn.functional.relu(weighted_activations.sum(axis=1))
+    resized_cam = cv2.resize(cam[idx].detach().cpu().numpy(), (rbf_det.size(2), rbf_det.size(3)))
+    resized_cam -= np.min(resized_cam)
+    resized_cam /= np.max(resized_cam)
+    resized_cam_jet = plt.cm.jet(resized_cam)[...,:3]
+    ax[0,1].imshow(decC.detach().cpu().numpy()[idx,0]); ax[0,1].imshow(resized_cam_jet, alpha=0.8); 
+    ax[1,1].imshow(decC.detach().cpu().numpy()[idx,0]);
+    plt.show()
+gradcam(True, idx=50)
+
+def saliency(idx = None):
+    fig, ax = plt.subplots(2,2)
+    if idx == None:
+        idx = 0
+    rbf_det.requires_grad_()
+    losses = model.pd(rbf_det).view(-1,1)
+    losses.backward(gradient=torch.ones_like(losses)) #Just following computational graph...
+    ax[0,0].imshow(rbf_det.grad.data.abs().amax(dim=1).detach().cpu().numpy()[idx], cmap=plt.cm.get_cmap("gray"));
+    ax[1,0].imshow(rbf_det.detach().cpu().numpy()[idx,0]);
+    decC_det.requires_grad_()
+    losses = model.pd(decC_det).view(-1,1)
+    losses.backward(gradient=torch.ones_like(losses)) #Just following computational graph...
+    ax[0,1].imshow(decC_det.grad.data.abs().amax(dim=1).detach().cpu().numpy()[idx], cmap=plt.cm.get_cmap("gray")); 
+    ax[1,1].imshow(decC_det.detach().cpu().numpy()[idx,0]);
+    plt.show()
+saliency(idx=50)
+
