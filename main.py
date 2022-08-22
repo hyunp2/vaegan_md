@@ -25,7 +25,7 @@ def get_args():
     parser = argparse.ArgumentParser(description='Training')
 
     #Model related
-    parser.add_argument('--load-model-directory', "-dirm", type=str, default="/Scr/hyunpark/Monster/PL_REDO/output", help='This is where model is/will be located...')  
+    parser.add_argument('--load-model-directory', "-dirm", type=str, default="/Scr/hyunpark/Monster/vaegan/output", help='This is where model is/will be located...')  
     parser.add_argument('--load-model-checkpoint', "-ckpt", type=str, default=None, help='which checkpoint...')  
     parser.add_argument('--model', type=str, default='physnet', choices=["physnet"], help='Which model to train')
     parser.add_argument('--loss_type', type=str, default="total", choices=["boltzmann", "contrastive", "total"], help='Loss functions')
