@@ -31,100 +31,153 @@ warnings.simplefilter("ignore")
 class Model(pl.LightningModule):
     def __init__(self, args, **kwargs):
         super().__init__()
+        
         self.args = args
         model_configs = kwargs.get("model_configs", None)
-        self.model_block = VAE.VAE(**energy_configs)     
-        wandb.init(project="VAE-GAN", entity="hyunp2")
-        latent_dim = self.model_block.decoder.hidden_dims[0] #2, 3, etc.
-        self.column_names = column_names = [f"z{i}" for i in range(latent_dim)]
+        self.model_block = VAE.VAE(**model_configs)     
+        self.beta = args.beta
+        
+        wandb.init(project="VAEGAN_MD", entity="hyunp2", name=args.name)
         wandb.watch(self.model_block, log="all")
-      
-    def forward(self, inputs):
-        coords = inputs #Input of original coords
-        z, mu, logstd, x = self.model_block(coords) #reconstructed 
 
+#         latent_dim = self.model_block.decoder.hidden_dims[0] #2, 3, etc.
+#         self.column_names = column_names = [f"z{i}" for i in range(latent_dim)]
+      
+    def forward(self, atomtype, restype, coords):
+        z, mu, logstd, x = self.model_block(coords) #x: reconstructed 
+        return z, mu, logstd, x
+
+    def _shared_step(self, batch, batch_idx, return_metadata=False):
+        coords = batch
+        z, mu, logstd, x = self(coords) #coords: BL3 -> z: (B,latdim)
+        mse, kl = self.model_block.losses(z, mu, logstd, x)
+        if not return_metadata:
+            return mse, kl
+        else:
+            return mse, kl, z, mu, logstd, x
+        
+    def on_train_epoch_start(self, ) -> None:
+        print(f"Current epoch is {self.current_epoch}!")
+        
     def training_step(self, batch, batch_idx):
-        loss, kl, mse, rmsd, tm, mat = self._shared_step(batch, batch_idx)
-        wandb.log({'train_loss': loss.item(),
+        mse, kl = self._shared_step(batch, batch_idx)
+        wandb.log({
                    'train_kl': kl.item(),
                    'train_mse': mse.item(),
-                   'train_rmsd': rmsd.item(),
-                   'train_tm': tm.item(),
-                   'train_mat': mat.item()})
-        return loss
+                   })
+        loss = (mse - self.beta * kl)
+        self.log("train_loss", loss, prog_bar=True)
+        return {"loss": loss, "train_kl": kl.item(), "train_mse": mse.item()}
 
     def training_epoch_end(self, training_step_outputs):
-        if not self.trainer.running_sanity_check:
-            self.log("epoch_train_loss", torch.stack(training_step_outputs).mean(), prog_bar=True)
+        if not self.trainer.sanity_checking:
+            epoch_train_loss = torch.stack([x["loss"] for x in training_step_outputs]).mean()
+            epoch_train_mse = torch.stack([x["train_mse"] for x in training_step_outputs]).mean()
+            epoch_train_kl = torch.stack([x["train_kl"] for x in training_step_outputs]).mean()
+            self.log("epoch_train_loss", epoch_train_loss)
             wandb.log({'epoch': self.current_epoch,
                        'epoch_lr': self.trainer.optimizers[0].param_groups[0]["lr"],
-                       'epoch_train_loss': torch.stack(training_step_outputs).mean().item()})
+                       'epoch_train_loss': epoch_train_loss,
+                       'epoch_train_mse': epoch_train_mse,
+                       'epoch_train_kl': epoch_train_kl,})
 
-    def on_validation_start(self, ):
-        #Called per EPOCH!
-        self.wandb_table = wandb.Table(columns=self.column_names)
-        self.df = []
+    @staticmethod
+    def plot_manifold(args: argparse.ArgumentParser, mus: np.ndarray, logstds: np.ndarray):
+        #WIP for PCA or UMAP or MDS
+        #summary is 
+        import sklearn.manifold
+        import plotly.express as px
+        from umap import UMAP
+#         proj = sklearn.manifold.TSNE(2)
+        proj = UMAP(random_state=42)
+        mus_proj = proj.fit_transform(mus) #(B,2) of tsne
+        path_to_plotly_html = os.path.join(args.load_model_directory, "plotly_figure.html")
+        fig = px.scatter(x=mus_proj[:,0], y=mus_proj[:,1], color=np.epx(logstds).reshape(-1,))
+        fig.write_html(path_to_plotly_html, auto_play = False)
+        table = wandb.Table(columns = ["plotly_figure"])
+        table.add_data(wandb.Html( open(path_to_plotly_html) ))
+        wandb.log({f"{proj.__class__.__name__} Plot {self.current_epoch}": table}) #Avoids overlap!
+            
+    def on_validation_epoch_start(self, ) -> None:
+#         self.wandb_table = wandb.Table(columns=self.column_names)
+#         self.df = []
+#         print("Validation starts...")
+        pass
         
-    def on_validation_end(self, ):
-        #Called per EPOCH!
-        df = torch.cat(self.df) #(MultiB, latent_dim)
-        self.wandb_table.add_data(*df.T)
-        wandb.run.log({f"Epoch {self.current_epoch} Valid Latent Representation" : wandb.plot.scatter(self.wandb_table,
-                            *self.column_names)})
-
     def validation_step(self, batch, batch_idx):
-        loss, kl, mse, rmsd, tm, mat = self._shared_step(batch, batch_idx, stage="valid")
-        wandb.log({'val_loss': loss.item(),
+        mse, kl, z, mu, logstd, x = self._shared_step(batch, batch_idx, return_metadata=True)
+        wandb.log({
                    'val_kl': kl.item(),
                    'val_mse': mse.item(),
-                   'val_rmsd': rmsd.item(),
-                   'val_tm': tm.item(),
-                   'val_mat': mat.item()})
-        return loss
+                   })
+        loss = (mse - self.beta * kl)
+        self.log("val_loss", loss, prog_bar=True)
+        return {"val_loss": loss, "val_kl": kl.item(), "val_mse": mse.item(), "mu": mu, "logstd": logstd}
 
     def validation_epoch_end(self, validation_step_outputs):
-        if not self.trainer.running_sanity_check:
-            self.log("epoch_val_loss", torch.stack(validation_step_outputs).mean(), prog_bar=True)
+        if not self.trainer.sanity_checking:
+            epoch_val_loss = torch.stack([x["val_loss"] for x in validation_step_outputs]).mean()
+            epoch_val_mse = torch.stack([x["val_mse"] for x in validation_step_outputs]).mean()
+            epoch_val_kl = torch.stack([x["val_kl"] for x in validation_step_outputs]).mean()
+            mus = torch.cat([x["mu"] for x in validation_step_outputs], dim=0) #(b,dim) -> (B,dim)
+            logstds = torch.cat([x["logstd"] for x in validation_step_outputs], dim=0) #(b,dim) -> (B,dim)
+            self.log("epoch_val_loss", epoch_val_loss)
             wandb.log({
-                       'epoch_val_loss': torch.stack(validation_step_outputs).mean().item()})
-
+                       'epoch_val_loss': epoch_val_loss,
+                       'epoch_val_mse': epoch_val_mse,
+                       'epoch_val_kl': epoch_val_kl,
+            })
+            if self.current_epoch % 10 == 0:
+                #WIP: Change modulus!
+                self.plot_manifold(self.args, mus.detach().cpu().numpy(), logstds.detach().cpu().numpy())
+#         df = torch.cat(self.df) #(MultiB, latent_dim)
+#         self.wandb_table.add_data(*df.T)
+#         wandb.run.log({f"Epoch {self.current_epoch} Valid Latent Representation" : wandb.plot.scatter(self.wandb_table,
+#                             *self.column_names)})
+    
+    
+    def on_test_epoch_start(self, ) -> None:
+        print("Testing starts...")
+    
     def test_step(self, batch, batch_idx):
-        loss, kl, mse, rmsd, tm, mat = self._shared_step(batch, batch_idx)
-        wandb.log({'test_loss': loss.item(),
+        mse, kl, z, mu, logstd, x = self._shared_step(batch, batch_idx, return_metadata=True)
+        wandb.log({
                    'test_kl': kl.item(),
                    'test_mse': mse.item(),
-                   'test_rmsd': rmsd.item(),
-                   'test_tm': tm.item(),
-                   'test_mat': mat.item()})
-        return loss
+                   })
+        loss = (mse - self.beta * kl)
+        self.log("test_loss", loss, prog_bar=True)
+        return {"test_loss": loss, "test_kl": kl.item(), "test_mse": mse.item(), "mu": mu, "logstd": logstd}
 
     def test_epoch_end(self, test_step_outputs):
-        if not self.trainer.running_sanity_check:
-            self.log("epoch_test_loss", torch.stack(test_step_outputs).mean(), prog_bar=True)
+        if not self.trainer.sanity_checking:
+            epoch_test_loss = torch.stack([x["test_loss"] for x in test_step_outputs]).mean()
+            epoch_test_mse = torch.stack([x["test_mse"] for x in test_step_outputs]).mean()
+            epoch_test_kl = torch.stack([x["test_kl"] for x in test_step_outputs]).mean()
+            mus = torch.cat([x["mu"] for x in validation_step_outputs], dim=0) #(b,dim) -> (B,dim)
+            logstds = torch.cat([x["logstd"] for x in validation_step_outputs], dim=0) #(b,dim) -> (B,dim)
+            self.log("epoch_test_loss", epoch_test_loss)
             wandb.log({
-                       'epoch_test_loss': torch.stack(test_step_outputs).mean().item()})
+                       'epoch_test_loss': epoch_test_loss,
+                       'epoch_test_mse': epoch_test_mse,
+                       'epoch_test_kl': epoch_test_kl,
+            })
+            self.plot_manifold(self.args, mus.detach().cpu().numpy(), logstds.detach().cpu().numpy())
 
-    def _shared_step(self, batch, batch_idx, stage=None):
-        coords = batch
-        z, mu, logstd, x = self.model_block(coords)
-        if stage in ["valid", "pred"]: self.df.append(mu) #list of (B,latent_dim)
-        loss, kl, mse, rmsd, tm, mat = self.custom_loss(z, mu, logstd, x)
-        return loss, kl, mse, rmsd, tm, mat 
+#     def on_predict_epoch_start(self, ):
+#         #Called per EPOCH!
+#         self.wandb_table = wandb.Table(columns=self.column_names)
+#         self.df = []
 
-    def on_predict_epoch_start(self, ):
-        #Called per EPOCH!
-        self.wandb_table = wandb.Table(columns=self.column_names)
-        self.df = []
+#     def predict_step(self, batch, batch_idx, dataloader_idx=0):
+#         self._shared_step(batch, batch_idx, stage="pred")
         
-    def on_predict_end(self, ):
-        #Called per EPOCH!
-        df = torch.cat(self.df) #(MultiB, latent_dim)
-        self.wandb_table.add_data(*df.T)
-        wandb.run.log({"Pred Latent Representation" : wandb.plot.scatter(self.wandb_table,
-                            *self.column_names)})
-
-    def predict_step(self, batch, batch_idx, dataloader_idx=0):
-        self._shared_step(batch, batch_idx, stage="pred")
+#     def on_predict_epoch_end(self, ):
+#         #Called per EPOCH!
+#         df = torch.cat(self.df) #(MultiB, latent_dim)
+#         self.wandb_table.add_data(*df.T)
+#         wandb.run.log({"Pred Latent Representation" : wandb.plot.scatter(self.wandb_table,
+#                             *self.column_names)})
 
     def configure_optimizers(self):
         optimizer = tfm.AdamW(self.model_block.parameters(), lr=self.args.lr)
@@ -134,20 +187,18 @@ class Model(pl.LightningModule):
             scheduler = tfm.get_cosine_with_hard_restarts_schedule_with_warmup(optimizer, num_warmup_steps = warmup_steps, num_training_steps=total_training_steps, num_cycles = 1, last_epoch = -1)
         elif self.scheduler == "linear":
             scheduler = tfm.get_linear_schedule_with_warmup(optimizer, num_warmup_steps = warmup_steps, num_training_steps=total_training_steps, last_epoch = -1)
-        return {"optimizer": optimizer, "lr_scheduler": scheduler}
+        scheduler = {"scheduler": scheduler, "interval": "step", "frequency": 1} #Every step/epoch with Frequency 1etc by monitoring val_loss if needed
+        return [optimizer], [scheduler]
 
-    def custom_loss(self, z, mu, logstd, x, coeffs: List[int]):
-        kl, mse, rmsd, tm, mat = VAE.VAE.losses(z, mu, logstd, x) #static method  
-        assert len(coeffs) == 5 #same as number of losses
-        loss = torch.sum(list(map(lambda coeff_, loss_: coeff_ * loss_, (*coeffs), (kl, mse, rmsd, tm, mat) )))
-        return loss, kl, mse, rmsd, tm, mat   
 
     def lerp(self, start: "1D tensor of features", end: "1D tensor of features", t: "1D tensor of weights"=1):
         outs = start + (end - start) * t.view(-1,1).to(inputs)
-        return outs
-
+        return outs #(num_interpolations, dim)
+        
     def _geometric_slerp(start, end, t):
         #https://github.com/scipy/scipy/blob/v1.9.0/scipy/spatial/_geometric_slerp.py#L35-L238:~:text=def%20geometric_slerp(,.ndarray%3A
+        
+        #WIP!
         
         # create an orthogonal basis using QR decomposition
         # One data point and interpolated!
@@ -170,42 +221,77 @@ class Model(pl.LightningModule):
         c = torch.cos(t * omega)
         return start * c[:, None] + end * s[:, None]
     
-    def generate_molecules(self, original: "test loader original coordinates (BL3)", inps: "starting point index, integer", outs: "end point index, integer", interps: "num of interpolations points") -> "Original && Recon_from_original && Lerp":
-        """MOVE to pl.Callback!"""
-        original = original
-        z, latent, logstd = self.model_block.encoder(original) #"latend_coordinates of (B,latent_dim)"
-        inputs = latent[inps]
-        outputs = latent[outs]
-        lerps = self.lerp(inputs=inputs, outputs=outputs, interps=torch.linspace(0, 1, interps)[1:-1]) #(Num_interpolations by latent_dim)
-        mean = self.args.dmo.dataset.mean #make sure dmo is saved as an argparse
-        std = self.args.dmo.dataset.std
+    def slerp(self, t, v0, v1, DOT_THRESHOLD=0.9995):
+        '''
+        https://github.com/PDillis/stylegan2-fun/blob/master/run_generator.py
+        Spherical linear interpolation
+        Args:
+            t (float/np.ndarray): Float value between 0.0 and 1.0
+            v0 (np.ndarray): Starting vector
+            v1 (np.ndarray): Final vector
+            DOT_THRESHOLD (float): Threshold for considering the two vectors as
+                                   colineal. Not recommended to alter this.
+        Returns:
+            v2 (np.ndarray): Interpolation vector between v0 and v1
+        '''
+        # Copy the vectors to reuse them later
+        v0_copy = np.copy(v0)
+        v1_copy = np.copy(v1)
+        # Normalize the vectors to get the directions and angles
+        v0 = v0 / np.linalg.norm(v0)
+        v1 = v1 / np.linalg.norm(v1)
+        # Dot product with the normalized vectors (can't use np.dot in W)
+        dot = np.sum(v0 * v1)
+        # If absolute value of dot product is almost 1, vectors are ~colineal, so use lerp
+        if np.abs(dot) > DOT_THRESHOLD:
+            return lerp(t, v0_copy, v1_copy)
+        # Calculate initial angle between v0 and v1
+        theta_0 = np.arccos(dot)
+        sin_theta_0 = np.sin(theta_0)
+        # Angle at timestep t
+        theta_t = theta_0 * t
+        sin_theta_t = np.sin(theta_t)
+        # Finish the slerp algorithm
+        s0 = np.sin(theta_0 - theta_t) / sin_theta_0
+        s1 = sin_theta_t / sin_theta_0
+        v2 = s0 * v0_copy + s1 * v1_copy
+        return v2
+    
+    def generate_molecules(self, original: "test loader original coordinates (BL3)", start_idx: "starting point index, integer", end_idx: "end point index, integer", num_interps: "num of interpolations points") -> "Original && Recon_from_original && Lerp":
+        """MOVE to pl.Callback!
+        WIP: Add Plotly functions!"""
+        z, mu, logstd, x = self(original) #"latend_coordinates of (B,latent_dim)"
+        inputs = latent[start_idx] # dim,
+        outputs = latent[end_idx] # dim,
+        lerps = self.lerp(inputs=inputs, outputs=outputs, interps=torch.linspace(0, 1, num_interps)[1:-1]) #(Num_interpolations by latent_dim)
+        
+        mean = self.args.data_mean #make sure dmo is saved as an argparse
+        std = self.args.data_std
         unnormalize = dl.ProteinDataset.unnormalize #static method
 
-        x = self.model_block.decoder(latent.to(mu))
-        original_recon  = unnormalize(x, mean=mean, std=std) #BL3, test_loader latent to reconstruction (raw coord)
-        x = self.model_block.decoder(lerps.to(mu)) #BL3, lerped to reconstruction (raw coord)
-        lerp_recon  = unnormalize(x, mean=mean, std=std) #BL3, test_loader latent to reconstruction (raw coord)
-
+        recon_scaled = self.model_block.decoder(mu) #BL3, (scaled coord)
+        recon  = unnormalize(recon_scaled, mean=mean, std=std) #BL3, test_loader latent to reconstruction (raw coord)
+        lerps_recon_scaled = self.model_block.decoder(lerps.to(mu)) #BL3, lerped to reconstruction (scaled coord)
+        lerps_recon  = unnormalize(lerps_recon_scaled, mean=mean, std=std) #BL3, test_loader latent to reconstruction (raw coord)
+        
         psf = self.args.psf_file
         pdb = self.args.pdb_file
         atom_selection = self.args.atom_selection
         
-        universes = [mda.Universe(psf, pdb) for _ in range(3)]
-        universe_atomgroups = list(map(lambda inp: getattr(inp, "select_atoms")(atom_selection), universes))
-
-        fake_closed_ca = fake_closed.atoms.select_atoms(atom_selection)
-        for idx, _ in enumerate(recon_):
-        fake_closed_ca.atoms.positions = unnormalize(traj, mean, std)[idx].detach().cpu().numpy()
-        fake_closed_ca.write(f"REAL_Train{idx}.pdb")
-        fake_closed_ca.atoms.positions = RECON[idx].detach().cpu().numpy()
-        fake_closed_ca.write(f"FAKE_Train{idx}.pdb")
-        fake_closed_ca.atoms.positions = recon_[idx].detach().cpu().numpy()
-        fake_closed_ca.write(f"fake_INTERP{idx}.pdb")
-        fake_closed_ca.atoms.positions = recon2_[idx].detach().cpu().numpy()
-        fake_closed_ca.write(f"fake_INTERP{idx}_2.pdb")
-    plt.scatter(*mu[:102].T.detach().cpu().numpy(), c=np.arange(102)); plt.scatter(*mu[102:].T.detach().cpu().numpy(), c=np.arange(98)); plt.colorbar(); plt.scatter(*lerps.T.detach().cpu().numpy()); plt.scatter(*lerps2.T.detach().cpu().numpy());  
-    plt.scatter(*(mu + logstd.exp()*torch.randn_like(logstd)*0.01).T.detach().cpu().numpy()); plt.show()
-    
+        u = mda.Universe(psf, pdb) #universe
+        u.load_new(recon) #overwrite coords
+        mda_traj_name = os.path.join(self.args.save_data_directory, self.args.name + "_recon.dcd")
+        with mda.Writer(mda_traj_name, u.atoms.n_atoms) as w:
+            for ts in u.trajectory:
+                w.write(u.atoms)   
+                
+        u = mda.Universe(psf, pdb) #universe
+        u.load_new(lerps_recon) #overwrite coords
+        mda_traj_name =  os.path.join(self.args.save_data_directory, self.args.name + "_lerps.dcd")
+        with mda.Writer(mda_traj_name, u.atoms.n_atoms) as w:
+            for ts in u.trajectory:
+                w.write(u.atoms)   
+        
 
 
 if __name__ == '__main__':
