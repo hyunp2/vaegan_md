@@ -110,18 +110,19 @@ class VAE(torch.nn.Module):
     
     @staticmethod
     def losses(inputs, z, mu, logstd, recon: "x"):
-        rmsd = torch.sqrt(torch.mean((inputs - recon)**2, dim=(-1, -2))).mean() #rmsd
+#         rmsd = torch.sqrt(torch.mean((inputs - recon)**2, dim=(-1, -2))).mean() #rmsd
         mse = torch.nn.MSELoss(reduction="mean")(recon, inputs)
-        kl = torch.mean(-0.5 * torch.sum(1 + logstd - mu ** 2 - logstd.exp(), dim = 1), dim = 0) #kl-div
-        L = max(15, inputs.shape[-2])
-        d0 = 1.24 * (L - 15)**(1/3) - 1.8
-        # get distance
-        dist = ((inputs - recon)**2).sum(dim=-1).sqrt()
-        tm = (1 / (1 + (dist/d0)**2)).mean(dim=-1).mean() #TM-score
-        inputs_mat = torch.cdist(inputs, inputs, p=2)
-        recon_mat = torch.cdist(recon, recon, p=2)
-        mat = 0.5*(inputs_mat - recon_mat).pow(2).sum(dim=(-1,-2)).mean() #Pairwise distance loss
-        return kl, mse, rmsd, tm, mat
+        kl = torch.mean(-0.5 * torch.sum(1 + logstd - mu ** 2 - logstd.exp(), dim = 1), dim = 0)  #kl-div
+#         L = max(15, inputs.shape[-2])
+#         d0 = 1.24 * (L - 15)**(1/3) - 1.8
+#         # get distance
+#         dist = ((inputs - recon)**2).sum(dim=-1).sqrt()
+#         tm = (1 / (1 + (dist/d0)**2)).mean(dim=-1).mean() #TM-score
+#         inputs_mat = torch.cdist(inputs, inputs, p=2)
+#         recon_mat = torch.cdist(recon, recon, p=2)
+#         mat = 0.5*(inputs_mat - recon_mat).pow(2).sum(dim=(-1,-2)).mean() #Pairwise distance loss
+#         return kl, mse, rmsd, tm, mat
+        return mse, kl
 
     def _init_weights(self, m: torch.nn.Module):
         if isinstance(m, torch.nn.Linear):
