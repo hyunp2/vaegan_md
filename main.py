@@ -34,6 +34,7 @@ def get_args():
 
     #Molecule (Dataloader) related
     parser.add_argument('--load-data-directory', "-dird", default="/Scr/hyunpark/Monster/PL_REDO/data", help='This is where data is located...')  
+    parser.add_argument('--save-data-directory', "-sird", default="/Scr/hyunpark/Monster/PL_REDO/data", help='This is where data is located...')  
     parser.add_argument('--molecule', type=str, default="alanine-dipeptide", help='Which molecule to analyze')
     parser.add_argument('--atom-selection', '-asel', type=str, default="all", help='MDAnalysis atom selection')
     parser.add_argument('--psf-file', '-psf', type=str, default=None, help='MDAnalysis PSF')
