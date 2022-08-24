@@ -43,7 +43,8 @@ class Model(pl.LightningModule):
 #         latent_dim = self.model_block.decoder.hidden_dims[0] #2, 3, etc.
 #         self.column_names = column_names = [f"z{i}" for i in range(latent_dim)]
       
-    def forward(self, atomtype, restype, coords):
+    def forward(self, coords):
+        #WIP: add atom/res types!
         z, mu, logstd, x = self.model_block(coords) #x: reconstructed 
         return z, mu, logstd, x
 
