@@ -112,7 +112,7 @@ class VAE(torch.nn.Module):
     def losses(inputs, z, mu, logstd, recon: "x"):
 #         rmsd = torch.sqrt(torch.mean((inputs - recon)**2, dim=(-1, -2))).mean() #rmsd
         mse = torch.nn.MSELoss(reduction="mean")(recon, inputs)
-        kl = torch.mean(-0.5 * torch.sum(1 + logstd - mu ** 2 - logstd.exp(), dim = 1), dim = 0)  #kl-div
+        kl = torch.mean(0.5 * torch.sum(1 + logstd - mu ** 2 - logstd.exp(), dim = 1), dim = 0)  #kl-div
 #         L = max(15, inputs.shape[-2])
 #         d0 = 1.24 * (L - 15)**(1/3) - 1.8
 #         # get distance
