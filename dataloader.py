@@ -34,6 +34,7 @@ def extract_trajectory(args):
     coords = AnalysisFromFunction(lambda ag: ag.positions.copy(),
                                    prot_traj.atoms.select_atoms(f"{atom_selection}")).run().results['timeseries']
     trajectory = torch.from_numpy(coords) #Train
+    assert reference.ndim == coords.ndim, "Must have 3 dimensions for both REF and TRAJ..."
     return reference, trajectory
 
 class ProteinDataset(torch.utils.data.Dataset):
@@ -43,32 +44,39 @@ class ProteinDataset(torch.utils.data.Dataset):
         self.reference = dataset[0]
         self.trajectory = dataset[1]
         self.trajectory, self.mean, self.std = self.normalize(self.trajectory) #Raw (x,y,z) to Normalized (x,y,z)
-        assert self.trajectory.ndim == 3, "dimensions are incorrect..."
+        assert self.reference.ndim == 3 and self.trajectory.ndim == 3, "dimensions are incorrect..."
+        
     def __len__(self):
         return len(self.trajectory) #train length...
+    
     def __getitem__(self, idx):
         coords = self.trajectory[idx] #B, L, 3
         return coords
+    
     def normalize(self, coords):
         coords = coords.view(coords.size(0), -1)
         mean = coords.mean(dim=0) #(B,C)
         std = coords.std(dim=0) #(B,C)
         coords_ = (coords - mean) / std
         coords_ = coords_.view(coords.size(0), coords.size(1)//3 ,3) #Back to original shape (B,L,3)
-        return coords_, mean, std
+        return coords_, mean, std #coords_ is SCALED BL3 shape dataset!
+    
     @staticmethod
     def unnormalize(coords, mean=None, std=None):
         assert mean != None and std != None, "Wrong arguments..."
         coords = coords.view(coords.size(0), -1)
         coords_ = (coords * std) + mean
         coords_ = coords_.view(coords.size(0), coords.size(1)//3 ,3) #Back to original shape (B,L,3)
-        return coords_
+        return coords_ #Reconstructed unscaled (i.e. raw) dataset (BL3)
 
 class DataModule(pl.LightningDataModule):
-    def __init__(self, dataset: List[torch.utils.data.Dataset]=None, args=None, **kwargs):
+    def __init__(self, dataset: ProteinDataset=None, args=None, **kwargs):
         super(DataModule, self).__init__()
-        self.dataset = dataset #Dataset instance of normalized trajectory data ... it is possible to call __getitem__ and dictionary calling...
+        self.dataset = dataset
         self.reference = dataset.reference #Reference data of (1,L,3)
+        self.trajectory = dataset.trajectory #Trajectory (B,L,3)
+        self.mean = dataset.mean
+        self.std = dataset.std
         self.batch_size = args.batch_size
         split_portion = args.split_portion
         self.seed = kwargs.get("seed", 42)
@@ -80,7 +88,7 @@ class DataModule(pl.LightningDataModule):
 
     #@pl.utilities.distributed.rank_zero_only
     def setup(self, stage=None):
-        self.trainset, self.validset, self.testset = torch.utils.data.random_split(self.dataset, [self.train_data_length, self.valid_data_length, len(self.dataset) - self.train_data_length - self.valid_data_length], generator=torch.Generator().manual_seed(self.seed)) 
+        self.trainset, self.validset, self.testset = torch.utils.data.random_split(self.trajectory, [self.train_data_length, self.valid_data_length, len(self.dataset) - self.train_data_length - self.valid_data_length], generator=torch.Generator().manual_seed(self.seed)) 
 
     def train_dataloader(self):
         return torch.utils.data.DataLoader(self.trainset, num_workers=self.num_workers, batch_sampler=torch.utils.data.BatchSampler(torch.utils.data.RandomSampler(self.trainset, generator=torch.Generator().manual_seed(self.seed)), batch_size=self.batch_size, drop_last=False), pin_memory=True)
