@@ -325,9 +325,9 @@ class Model(pl.LightningModule):
         lerps_recon  = unnormalize(lerps_recon_scaled, mean=mean, std=std) #BL3, test_loader latent to reconstruction (raw coord)
         
         colors = torch.cat([torch.LongTensor([i*10] * tensor.size(0)) for i, tensor in enumerate([original, recon, lerps_recon]) ], dim=0).detach().cpu().numpy()
-        traj_cats = torch.cat([original, recon, lerps_recon], dim=0).detach().cpu().numpy() #BBB,L,3
+        traj_cats = torch.cat([original, recon, lerps_recon], dim=0) #.detach().cpu().numpy() #BBB,L,3
         _, mus, logstds, _ = self(traj_cats)
-        self.plot_manifold_with_colors(self.args, mus, logstds, None, colors)
+        self.plot_manifold_with_colors(self.args, mus.detach().cpu().numpy(), logstds.detach().cpu().numpy(), None, colors)
 
 #         psf = self.args.psf_file
         pdb = os.path.join(self.args.load_data_directory, os.path.splitext(self.args.pdb_file)[0] + "_reduced.pdb") #string
