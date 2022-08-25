@@ -58,11 +58,11 @@ class Decoder(torch.nn.Module):
         super().__init__()
         self.hidden_dims = hidden_dims
         self.unrolled_dim = kwargs.get("unrolled_dim") #xyz coord dim of original protein trajectory
-        self.rolled_dim = kwargs.get("rolled_dim", None) #xyz coord dim of original protein trajectory
-        self.reference = kwargs.get("reference", None) #PDB of reference
-        self.mha_dimension = kwargs.get("mha_dimension", None)
-        self.nheads = kwargs.get("nheads", None)
-        self.layers = kwargs.get("layers", None)
+#         self.rolled_dim = kwargs.get("rolled_dim", None) #xyz coord dim of original protein trajectory
+#         self.reference = kwargs.get("reference", None) #PDB of reference
+#         self.mha_dimension = kwargs.get("mha_dimension", None)
+#         self.nheads = kwargs.get("nheads", None)
+#         self.layers = kwargs.get("layers", None)
 
         linears = torch.nn.Sequential(*[ 
                                       torch.nn.Linear(self.hidden_dims[0], self.hidden_dims[1]), torch.nn.SiLU(True),                 
@@ -94,14 +94,15 @@ class VAE(torch.nn.Module):
         self.args = args
         self.hidden_dims_enc = kwargs.get("hidden_dims_enc", None)
         self.hidden_dims_dec = kwargs.get("hidden_dims_dec", None)
-        self.unrolled_dim = kwargs.get("unrolled_dim") #xyz coord dim of original protein trajectory
-        self.rolled_dim = kwargs.get("rolled_dim") #xyz coord dim of original protein trajectory
-        self.reference = kwargs.get("reference") #PDB of reference
-        self.mha_dimension = kwargs.get("mha_dimension", 1200)
-        self.nheads = kwargs.get("nheads", 6)
-        self.layers = kwargs.get("layers", 6)
+        self.unrolled_dim = kwargs.get("unrolled_dim", None) #xyz coord dim of original protein trajectory
+#         self.rolled_dim = kwargs.get("rolled_dim") #xyz coord dim of original protein trajectory
+#         self.reference = kwargs.get("reference") #PDB of reference
+#         self.mha_dimension = kwargs.get("mha_dimension", 1200)
+#         self.nheads = kwargs.get("nheads", 6)
+#         self.layers = kwargs.get("layers", 6)
         self.encoder = Encoder(hidden_dims=self.hidden_dims_enc, unrolled_dim=self.unrolled_dim)
-        self.decoder = Decoder(hidden_dims=self.hidden_dims_dec, reference=self.reference, rolled_dim=self.rolled_dim, unrolled_dim=self.unrolled_dim, mha_dimension=self.mha_dimension, nheads=self.nheads, layers=self.layers)
+#         self.decoder = Decoder(hidden_dims=self.hidden_dims_dec, reference=self.reference, rolled_dim=self.rolled_dim, unrolled_dim=self.unrolled_dim, mha_dimension=self.mha_dimension, nheads=self.nheads, layers=self.layers)
+        self.decoder = Decoder(hidden_dims=self.hidden_dims_dec, unrolled_dim=self.unrolled_dim)
 
     def forward(self, inputs: "Trajectory"):
         x = inputs #Normalized input
