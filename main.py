@@ -65,7 +65,7 @@ def get_args():
 
     #Misc.
     parser.add_argument('--num_workers', type=int, default=4, help='Number of workers for data prefetch')
-    parser.add_argument('--train_mode', type=str, default="train", choices=["train","test","pred"])
+    parser.add_argument('--train_mode', type=str, default="train", choices=["train","test","pred","sample"])
     parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('--beta', type=float, default=1., help="beta-VAE")
 
@@ -301,8 +301,9 @@ if __name__ == "__main__":
         _main()
     elif args.train_mode in ["test"]:
         _test()
-
     elif args.train_mode in ["pred"]:
         _test(args)
+    elif args.train_mode in ["sample"]:
+        _sample()
         
 #     python -m main --psf_file 3f48final.psf --pdb_file 3f48finaleqnbfix.pdb --trajectory_files force5tm18_afterreleaseeq_nbfix.dcd --strategy none --batch_size 16
