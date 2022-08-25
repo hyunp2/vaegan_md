@@ -76,19 +76,25 @@ def _main():
     args = get_args()
     
     pl.seed_everything(args.seed)
+    
+    # ------------------------
+    # 0 MAKE REDUCED PDB
+    # ------------------------
+    datamodule = dl.DataModule(args) #Generates _reduced.pdb
+    datamodule.setup()
 
     # ------------------------
     # 1 INIT LIGHTNING MODEL
     # ------------------------
     atom_selection = args.atom_selection
-    pdb = os.path.join(args.load_data_directory, args.pdb_file) #string
-    psf = os.path.join(args.load_data_directory, args.psf_file) #string
-    prot_ref = mda.Universe(psf, pdb)
-    pos = prot_ref.atoms.select_atoms(atom_selection).positions #L,3
+    pdb = os.path.join(args.load_data_directory, os.path.splitext(args.pdb_file)[0] + "_reduced.pdb")) #string
+#     psf = os.path.join(args.load_data_directory, args.psf_file) #string
+    prot_ref = mda.Universe(pdb) #PSF must not be considered
+    pos = prot_ref.atoms.select_atoms(atom_selection).positions #L,3; Does not affect anymore since Datamodule already takes care of it!
     unrolled_dim = pos.shape[0] * pos.shape[1]
     
-    model_configs = dict(hidden_dims_enc=[1500, 750, 400, 200, 200],
-                         hidden_dims_dec=[100, 200, 400, 750, 1500],
+    model_configs = dict(hidden_dims_enc=[1000, 500, 100, 50, 4],
+                         hidden_dims_dec=[2, 50, 100, 500, 1000],
                          unrolled_dim=unrolled_dim)
     model = Model.load_from_checkpoint( os.path.join(args.load_model_directory, args.load_model_checkpoint), args=args, model_configs=model_configs, strict=True ) if args.load_model_checkpoint else Model(args=args, model_configs=model_configs)
 
@@ -154,8 +160,6 @@ def _main():
     if args.strategy in ["none", None]:
         args.strategy = None
     
-    datamodule = dl.DataModule(args)
-    datamodule.setup()
     train_dataloaders, val_dataloaders = datamodule.train_dataloader(), datamodule.val_dataloader()
     [setattr(model, key, val) for key, val in zip(["data_mean", "data_std", "loader_length"], [datamodule.mean, datamodule.std, datamodule.trajectory.size(0) ])] #set mean and std
     print("Model's dataset mean and std are set:", model.data_mean, " and ", model.data_std)
@@ -189,19 +193,25 @@ def _test(args: argparse.ArgumentParser):
     pl.seed_everything(args.seed)
 
     # ------------------------
+    # 0 MAKE REDUCED PDB
+    # ------------------------
+    datamodule = dl.DataModule(args)
+    datamodule.setup()
+    
+    # ------------------------
     # 1 INIT LIGHTNING MODEL
     # ------------------------
     atom_selection = args.atom_selection
-    pdb = os.path.join(args.load_data_directory, args.pdb_file) #string
-    psf = os.path.join(args.load_data_directory, args.psf_file) #string
-    prot_ref = mda.Universe(psf, pdb)
-    pos = prot_ref.atoms.select_atoms(atom_selection).positions #L,3
+    pdb = os.path.join(args.load_data_directory, os.path.splitext(args.pdb_file)[0] + "_reduced.pdb")) #string
+#     psf = os.path.join(args.load_data_directory, args.psf_file) #string
+    prot_ref = mda.Universe(pdb) #PSF must not be considered
+    pos = prot_ref.atoms.select_atoms(atom_selection).positions #L,3; Does not affect anymore since Datamodule already takes care of it!
     unrolled_dim = pos.shape[0] * pos.shape[1]
     
-    model_configs = dict(hidden_dims_enc=[1500, 750, 400, 200, 200],
-                         hidden_dims_dec=[100, 200, 400, 750, 1500],
+    model_configs = dict(hidden_dims_enc=[1000, 500, 100, 50, 4],
+                         hidden_dims_dec=[2, 50, 100, 500, 1000],
                          unrolled_dim=unrolled_dim)
-    model = Model.Model.load_from_checkpoint( os.path.join(args.load_model_directory, args.load_model_checkpoint), args=args, model_configs=model_configs, strict=True ) if args.load_model_checkpoint else Model(args=args, model_configs=model_configs)
+    model = Model.load_from_checkpoint( os.path.join(args.load_model_directory, args.load_model_checkpoint), args=args, model_configs=model_configs, strict=True ) if args.load_model_checkpoint else Model(args=args, model_configs=model_configs)
     
     if args.load_model_checkpoint:
         resume_ckpt = os.path.join(args.load_model_directory, args.load_model_checkpoint)
@@ -247,19 +257,25 @@ def _sample(args: argparse.ArgumentParser):
     pl.seed_everything(args.seed)
 
     # ------------------------
+    # 0 MAKE REDUCED PDB
+    # ------------------------
+    datamodule = dl.DataModule(args)
+    datamodule.setup()
+    
+    # ------------------------
     # 1 INIT LIGHTNING MODEL
     # ------------------------
     atom_selection = args.atom_selection
-    pdb = os.path.join(args.load_data_directory, args.pdb_file) #string
-    psf = os.path.join(args.load_data_directory, args.psf_file) #string
-    prot_ref = mda.Universe(psf, pdb)
-    pos = prot_ref.atoms.select_atoms(atom_selection).positions #L,3
+    pdb = os.path.join(args.load_data_directory, os.path.splitext(args.pdb_file)[0] + "_reduced.pdb")) #string
+#     psf = os.path.join(args.load_data_directory, args.psf_file) #string
+    prot_ref = mda.Universe(pdb) #PSF must not be considered
+    pos = prot_ref.atoms.select_atoms(atom_selection).positions #L,3; Does not affect anymore since Datamodule already takes care of it!
     unrolled_dim = pos.shape[0] * pos.shape[1]
     
-    model_configs = dict(hidden_dims_enc=[1500, 750, 400, 200, 200],
-                         hidden_dims_dec=[100, 200, 400, 750, 1500],
+    model_configs = dict(hidden_dims_enc=[1000, 500, 100, 50, 4],
+                         hidden_dims_dec=[2, 50, 100, 500, 1000],
                          unrolled_dim=unrolled_dim)
-    model = Model.Model.load_from_checkpoint( os.path.join(args.load_model_directory, args.load_model_checkpoint), args=args, model_configs=model_configs, strict=True ) if args.load_model_checkpoint else Model(args=args, model_configs=model_configs)
+    model = Model.load_from_checkpoint( os.path.join(args.load_model_directory, args.load_model_checkpoint), args=args, model_configs=model_configs, strict=True ) if args.load_model_checkpoint else Model(args=args, model_configs=model_configs)
     
     if args.load_model_checkpoint:
         resume_ckpt = os.path.join(args.load_model_directory, args.load_model_checkpoint)
