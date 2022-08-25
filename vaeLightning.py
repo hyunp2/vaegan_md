@@ -75,16 +75,16 @@ class Model(pl.LightningModule):
         return {"loss": loss, "train_kl": kl, "train_mse": mse}
 
     def training_epoch_end(self, training_step_outputs):
-        if not self.trainer.sanity_checking:
-            epoch_train_loss = torch.stack([x["loss"] for x in training_step_outputs]).mean()
-            epoch_train_mse = torch.stack([x["train_mse"] for x in training_step_outputs]).mean()
-            epoch_train_kl = torch.stack([x["train_kl"] for x in training_step_outputs]).mean()
-            self.log("epoch_train_loss", epoch_train_loss)
-            wandb.log({'epoch': self.current_epoch,
-                       'epoch_lr': self.trainer.optimizers[0].param_groups[0]["lr"],
-                       'epoch_train_loss': epoch_train_loss,
-                       'epoch_train_mse': epoch_train_mse,
-                       'epoch_train_kl': epoch_train_kl,})
+#         if not self.trainer.sanity_checking:
+        epoch_train_loss = torch.stack([x["loss"] for x in training_step_outputs]).mean()
+        epoch_train_mse = torch.stack([x["train_mse"] for x in training_step_outputs]).mean()
+        epoch_train_kl = torch.stack([x["train_kl"] for x in training_step_outputs]).mean()
+        self.log("epoch_train_loss", epoch_train_loss)
+        wandb.log({'epoch': self.current_epoch,
+                   'epoch_lr': self.trainer.optimizers[0].param_groups[0]["lr"],
+                   'epoch_train_loss': epoch_train_loss,
+                   'epoch_train_mse': epoch_train_mse,
+                   'epoch_train_kl': epoch_train_kl,})
 
     @staticmethod
     def plot_manifold(args: argparse.ArgumentParser, mus: Union[np.ndarray, torch.Tensor], logstds: Union[np.ndarray, torch.Tensor], title: str):
@@ -122,22 +122,22 @@ class Model(pl.LightningModule):
         return {"val_loss": loss, "val_kl": kl, "val_mse": mse, "mu": mu, "logstd": logstd}
 
     def validation_epoch_end(self, validation_step_outputs):
-        if not self.trainer.sanity_checking:
-            epoch_val_loss = torch.stack([x["val_loss"] for x in validation_step_outputs]).mean()
-            epoch_val_mse = torch.stack([x["val_mse"] for x in validation_step_outputs]).mean()
-            epoch_val_kl = torch.stack([x["val_kl"] for x in validation_step_outputs]).mean()
-            mus = torch.cat([x["mu"] for x in validation_step_outputs], dim=0) #(b,dim) -> (B,dim)
-            logstds = torch.cat([x["logstd"] for x in validation_step_outputs], dim=0) #(b,dim) -> (B,dim)
-            self.log("epoch_val_loss", epoch_val_loss)
-            wandb.log({
-                       'epoch_val_loss': epoch_val_loss,
-                       'epoch_val_mse': epoch_val_mse,
-                       'epoch_val_kl': epoch_val_kl,
-            })
-            if self.current_epoch % 10 == 0:
-                #WIP: Change modulus!
-                print(mus.shape, logstds.shape)
-                self.plot_manifold(self.args, mus.detach().cpu().numpy(), logstds.detach().cpu().numpy(), self.current_epoch)
+#         if not self.trainer.sanity_checking:
+        epoch_val_loss = torch.stack([x["val_loss"] for x in validation_step_outputs]).mean()
+        epoch_val_mse = torch.stack([x["val_mse"] for x in validation_step_outputs]).mean()
+        epoch_val_kl = torch.stack([x["val_kl"] for x in validation_step_outputs]).mean()
+        mus = torch.cat([x["mu"] for x in validation_step_outputs], dim=0) #(b,dim) -> (B,dim)
+        logstds = torch.cat([x["logstd"] for x in validation_step_outputs], dim=0) #(b,dim) -> (B,dim)
+        self.log("epoch_val_loss", epoch_val_loss)
+        wandb.log({
+                   'epoch_val_loss': epoch_val_loss,
+                   'epoch_val_mse': epoch_val_mse,
+                   'epoch_val_kl': epoch_val_kl,
+        })
+        if self.current_epoch % 10 == 0:
+            #WIP: Change modulus!
+            print(mus.shape, logstds.shape)
+            self.plot_manifold(self.args, mus.detach().cpu().numpy(), logstds.detach().cpu().numpy(), self.current_epoch)
 #         df = torch.cat(self.df) #(MultiB, latent_dim)
 #         self.wandb_table.add_data(*df.T)
 #         wandb.run.log({f"Epoch {self.current_epoch} Valid Latent Representation" : wandb.plot.scatter(self.wandb_table,
@@ -158,19 +158,19 @@ class Model(pl.LightningModule):
         return {"test_loss": loss, "test_kl": kl, "test_mse": mse, "mu": mu, "logstd": logstd}
 
     def test_epoch_end(self, test_step_outputs):
-        if not self.trainer.sanity_checking:
-            epoch_test_loss = torch.stack([x["test_loss"] for x in test_step_outputs]).mean()
-            epoch_test_mse = torch.stack([x["test_mse"] for x in test_step_outputs]).mean()
-            epoch_test_kl = torch.stack([x["test_kl"] for x in test_step_outputs]).mean()
-            mus = torch.cat([x["mu"] for x in validation_step_outputs], dim=0) #(b,dim) -> (B,dim)
-            logstds = torch.cat([x["logstd"] for x in validation_step_outputs], dim=0) #(b,dim) -> (B,dim)
-            self.log("epoch_test_loss", epoch_test_loss)
-            wandb.log({
-                       'epoch_test_loss': epoch_test_loss,
-                       'epoch_test_mse': epoch_test_mse,
-                       'epoch_test_kl': epoch_test_kl,
-            })
-            self.plot_manifold(self.args, mus.detach().cpu().numpy(), logstds.detach().cpu().numpy())
+#         if not self.trainer.sanity_checking:
+        epoch_test_loss = torch.stack([x["test_loss"] for x in test_step_outputs]).mean()
+        epoch_test_mse = torch.stack([x["test_mse"] for x in test_step_outputs]).mean()
+        epoch_test_kl = torch.stack([x["test_kl"] for x in test_step_outputs]).mean()
+        mus = torch.cat([x["mu"] for x in validation_step_outputs], dim=0) #(b,dim) -> (B,dim)
+        logstds = torch.cat([x["logstd"] for x in validation_step_outputs], dim=0) #(b,dim) -> (B,dim)
+        self.log("epoch_test_loss", epoch_test_loss)
+        wandb.log({
+                   'epoch_test_loss': epoch_test_loss,
+                   'epoch_test_mse': epoch_test_mse,
+                   'epoch_test_kl': epoch_test_kl,
+        })
+        self.plot_manifold(self.args, mus.detach().cpu().numpy(), logstds.detach().cpu().numpy())
 
 #     def on_predict_epoch_start(self, ):
 #         #Called per EPOCH!
