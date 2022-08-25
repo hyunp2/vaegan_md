@@ -31,10 +31,15 @@ def extract_trajectory(args):
     pdb = os.path.join(args.load_data_directory, args.pdb_file) #string
     psf = os.path.join(args.load_data_directory, args.psf_file) #string
     traj = list(map(lambda inp: os.path.join(args.load_data_directory, inp), args.trajectory_files)) #string list
-    prot_ref = mda.Universe(psf, pdb) 
+    prot_ref = mda.Universe(pdb) #must not call PSF
     prot_traj = mda.Universe(psf, *traj) 
     prot_ref_ag = prot_ref.atoms.select_atoms(f"{atom_selection}")
-    prot_ref_ag.write(os.path.join(args.load_data_directory, os.path.splitext(args.pdb_file)[0] + "_reduced.pdb")) #write a reduced file; based on atom selection!
+    
+    reduced_pdb_file = os.path.join(args.load_data_directory, os.path.splitext(args.pdb_file)[0] + "_reduced.pdb")
+    if not os.path.exist(reduced_pdb_file)
+        prot_ref_ag.write(reduced_pdb_file) #write a reduced file; based on atom selection!
+    else:
+        pass
     reference = torch.from_numpy(prot_ref.atoms.select_atoms(f"{atom_selection}").positions)[None,:]
     coords = AnalysisFromFunction(lambda ag: ag.positions.copy(),
                                    prot_traj.atoms.select_atoms(f"{atom_selection}")).run().results['timeseries']
