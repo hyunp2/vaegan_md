@@ -86,17 +86,35 @@ class Model(pl.LightningModule):
                    'epoch_train_mse': epoch_train_mse,
                    'epoch_train_kl': epoch_train_kl,})
 
+#     @staticmethod
+#     def plot_manifold(args: argparse.ArgumentParser, mus: Union[np.ndarray, torch.Tensor], logstds: Union[np.ndarray, torch.Tensor], title: str, nologging=False):
+#         #WIP for PCA or UMAP or MDS
+#         #summary is 
+#         import sklearn.manifold
+#         import plotly.express as px
+#         from umap import UMAP
+#         import scipy.stats
+# #         proj = sklearn.manifold.TSNE(2)
+#         proj = UMAP(random_state=42)
+#         mus_proj = proj.fit_transform(mus) #(B,2) of tsne
+#         path_to_plotly_html = os.path.join(args.save_data_directory, "plotly_figure.html")
+#         dist = scipy.stats.multivariate_normal(np.zeros(mus.shape[1]), 1)
+#         fig = px.scatter(x=mus_proj[:,0], y=mus_proj[:,1], color=dist.pdf(mus).reshape(-1,))
+#         fig.write_html(path_to_plotly_html, auto_play = False)
+#         if not nologging:
+#         table = wandb.Table(columns = ["plotly_figure"])
+#         table.add_data(wandb.Html( open(path_to_plotly_html) ))
+#         wandb.log({f"{proj.__class__.__name__} Plot {title}": table}) #Avoids overlap!
+#         return proj #Fitted 
+
     @staticmethod
-    def plot_manifold(args: argparse.ArgumentParser, mus: Union[np.ndarray, torch.Tensor], logstds: Union[np.ndarray, torch.Tensor], title: str):
+    def plot_manifold(args: argparse.ArgumentParser, mus: Union[np.ndarray, torch.Tensor], logstds: Union[np.ndarray, torch.Tensor], title: str, nologging=False):
         #WIP for PCA or UMAP or MDS
         #summary is 
-        import sklearn.manifold
         import plotly.express as px
-        from umap import UMAP
         import scipy.stats
-#         proj = sklearn.manifold.TSNE(2)
-        proj = UMAP(random_state=42)
-        mus_proj = proj.fit_transform(mus) #(B,2) of tsne
+        
+        assert len(mus.shape) == 2 and len(logstds.shape) == 2
         path_to_plotly_html = os.path.join(args.save_data_directory, "plotly_figure.html")
         dist = scipy.stats.multivariate_normal(np.zeros(mus.shape[1]), 1)
         fig = px.scatter(x=mus_proj[:,0], y=mus_proj[:,1], color=dist.pdf(mus).reshape(-1,))
@@ -104,7 +122,8 @@ class Model(pl.LightningModule):
         table = wandb.Table(columns = ["plotly_figure"])
         table.add_data(wandb.Html( open(path_to_plotly_html) ))
         wandb.log({f"{proj.__class__.__name__} Plot {title}": table}) #Avoids overlap!
-            
+#         return proj #Fitted 
+
     def on_validation_epoch_start(self, ) -> None:
 #         self.wandb_table = wandb.Table(columns=self.column_names)
 #         self.df = []
