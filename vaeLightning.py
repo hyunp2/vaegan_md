@@ -53,7 +53,7 @@ class Model(pl.LightningModule):
     def _shared_step(self, batch, batch_idx, return_metadata=False):
         coords = batch
         z, mu, logstd, x = self(coords) #coords: BL3 -> z: (B,latdim)
-        mse, kl = self.model_block.losses(z, mu, logstd, x)
+        mse, kl = self.model_block.losses(z, mu, logstd, x, self.args.beta) #beta-VAE
         if not return_metadata:
             return mse, kl
         else:
