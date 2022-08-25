@@ -75,7 +75,6 @@ class DataModule(pl.LightningDataModule):
     def __init__(self, args=None, **kwargs):
         super(DataModule, self).__init__()
         datasets = extract_trajectory(args) #tuple of reference and traj
-        ProteinDataset(datasets)
         self.dataset = ProteinDataset(datasets)
         self.reference = dataset.reference #Reference data of (1,L,3)
         self.trajectory = dataset.trajectory #Trajectory (B,L,3)
