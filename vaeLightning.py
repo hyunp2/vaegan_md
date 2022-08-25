@@ -68,7 +68,7 @@ class Model(pl.LightningModule):
                    'train_kl': kl.item(),
                    'train_mse': mse.item(),
                    })
-        loss = (mse - self.beta * kl)
+        loss = (mse - kl)
         self.log("train_loss", loss, prog_bar=True)
         return {"loss": loss, "train_kl": kl.item(), "train_mse": mse.item()}
 
@@ -113,7 +113,7 @@ class Model(pl.LightningModule):
                    'val_kl': kl.item(),
                    'val_mse': mse.item(),
                    })
-        loss = (mse - self.beta * kl)
+        loss = (mse - kl)
         self.log("val_loss", loss, prog_bar=True)
         return {"val_loss": loss, "val_kl": kl.item(), "val_mse": mse.item(), "mu": mu, "logstd": logstd}
 
@@ -148,7 +148,7 @@ class Model(pl.LightningModule):
                    'test_kl': kl.item(),
                    'test_mse': mse.item(),
                    })
-        loss = (mse - self.beta * kl)
+        loss = (mse - kl)
         self.log("test_loss", loss, prog_bar=True)
         return {"test_loss": loss, "test_kl": kl.item(), "test_mse": mse.item(), "mu": mu, "logstd": logstd}
 
