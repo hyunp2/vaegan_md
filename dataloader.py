@@ -97,12 +97,15 @@ class DataModule(pl.LightningDataModule):
         self.split_portion = (split_portion / 100) if split_portion > 1 else split_portion
         self.train_data_length = int(len(self.dataset) * self.split_portion)
         self.valid_data_length = int(len(self.dataset) * (1 - self.split_portion)/2 )
+        self.train_val_dataset = self.trajectory[ : (self.train_data_length+self.valid_data_length) ]
+        self.test_dataset = self.trajectory[(self.train_data_length+self.valid_data_length) : ]
         self.num_workers = args.num_workers
 
     #@pl.utilities.distributed.rank_zero_only
     def setup(self, stage=None):
-        self.trainset, self.validset, self.testset = torch.utils.data.random_split(self.trajectory, [self.train_data_length, self.valid_data_length, len(self.dataset) - self.train_data_length - self.valid_data_length], generator=torch.Generator().manual_seed(self.seed)) 
-
+        self.trainset, self.validset= torch.utils.data.random_split(self.train_val_dataset, [self.train_data_length, self.valid_data_length], generator=torch.Generator().manual_seed(self.seed)) 
+        self.testset = self.test_dataset #Pristine Last frames in correct times...
+        
     def train_dataloader(self):
         return torch.utils.data.DataLoader(self.trainset, shuffle=True, num_workers=self.num_workers, batch_size=self.batch_size, drop_last=False, pin_memory=True)
 
