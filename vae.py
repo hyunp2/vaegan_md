@@ -57,11 +57,11 @@ class Decoder(torch.nn.Module):
         super().__init__()
         self.hidden_dims = hidden_dims
         self.unrolled_dim = kwargs.get("unrolled_dim") #xyz coord dim of original protein trajectory
-        self.rolled_dim = kwargs.get("rolled_dim") #xyz coord dim of original protein trajectory
-        self.reference = kwargs.get("reference") #PDB of reference
-        self.mha_dimension = kwargs.get("mha_dimension", 1200)
-        self.nheads = kwargs.get("nheads", 6)
-        self.layers = kwargs.get("layers", 6)
+        self.rolled_dim = kwargs.get("rolled_dim", None) #xyz coord dim of original protein trajectory
+        self.reference = kwargs.get("reference", None) #PDB of reference
+        self.mha_dimension = kwargs.get("mha_dimension", None)
+        self.nheads = kwargs.get("nheads", None)
+        self.layers = kwargs.get("layers", None)
 
         linears = torch.nn.Sequential(*[ 
                                       torch.nn.Linear(self.hidden_dims[0], self.hidden_dims[1]), torch.nn.SiLU(True),                 
@@ -77,7 +77,7 @@ class Decoder(torch.nn.Module):
         #self.pos_emb = torch.nn.Embedding(self.reference.size(1), 3) #reference is (1,L,3)
 
     def forward(self, inputs: "BD"):
-        sizes = self.reference.size() #1,L,3
+        sizes = (1, self.unrolled_dim//3, 3) #1,L,3
         x = inputs #Latent dim
         x = self.linears_sequential(x)
         x = 3*torch.tanh(x)
