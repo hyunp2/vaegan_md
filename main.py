@@ -254,4 +254,4 @@ if __name__ == "__main__":
 
 if __name__ == "__main__":
     main()
-    python -m main --psf_file 3f48final.psf --pdb_file 3f48finaleqnbfix.pdb --trajectory_files force5tm18_afterreleaseeq_nbfix.dcd --strategy none --batch_size 16
+#     python -m main --psf_file 3f48final.psf --pdb_file 3f48finaleqnbfix.pdb --trajectory_files force5tm18_afterreleaseeq_nbfix.dcd --strategy none --batch_size 16
