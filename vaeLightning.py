@@ -334,21 +334,21 @@ class Model(pl.LightningModule):
         atom_selection = self.args.atom_selection
     
         u = mda.Universe(pdb) #universe
-        u.load_new(original) #overwrite coords
+        u.load_new(original.detach().cpu().numpy()) #overwrite coords
         mda_traj_name = os.path.join(self.args.save_data_directory, self.args.name + "_test.dcd") if self.args.name is not None else os.path.join(self.args.save_data_directory, os.path.splitext(self.args.pdb_file)[0] + "_reduced" + "_test.dcd")
         with mda.Writer(mda_traj_name, u.atoms.n_atoms) as w:
             for ts in u.trajectory:
                 w.write(u.atoms)   
     
         u = mda.Universe(pdb) #universe
-        u.load_new(recon) #overwrite coords
+        u.load_new(recon.detach().cpu().numpy()) #overwrite coords
         mda_traj_name = os.path.join(self.args.save_data_directory, self.args.name + "_recon.dcd") if self.args.name is not None else os.path.join(self.args.save_data_directory, os.path.splitext(self.args.pdb_file)[0] + "_reduced" + "_recon.dcd")
         with mda.Writer(mda_traj_name, u.atoms.n_atoms) as w:
             for ts in u.trajectory:
                 w.write(u.atoms)   
                 
         u = mda.Universe(pdb) #universe
-        u.load_new(lerps_recon) #overwrite coords
+        u.load_new(lerps_recon.detach().cpu().numpy()) #overwrite coords
         mda_traj_name = os.path.join(self.args.save_data_directory, self.args.name + "_lerps.dcd") if self.args.name is not None else os.path.join(self.args.save_data_directory, os.path.splitext(self.args.pdb_file)[0] + "_reduced" + "_lerps.dcd")
         with mda.Writer(mda_traj_name, u.atoms.n_atoms) as w:
             for ts in u.trajectory:
