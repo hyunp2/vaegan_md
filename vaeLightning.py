@@ -3,7 +3,6 @@ import transformers as tfm
 import dataloader as dl 
 # import physnet_block as pb
 import pytorch_lightning as pl
-import losses as ls
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
