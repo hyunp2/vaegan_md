@@ -94,7 +94,7 @@ class Model(pl.LightningModule):
 #         proj = sklearn.manifold.TSNE(2)
         proj = UMAP(random_state=42)
         mus_proj = proj.fit_transform(mus) #(B,2) of tsne
-        path_to_plotly_html = os.path.join(args.load_model_directory, "plotly_figure.html")
+        path_to_plotly_html = os.path.join(args.save_data_directory, "plotly_figure.html")
         fig = px.scatter(x=mus_proj[:,0], y=mus_proj[:,1], color=np.epx(logstds).reshape(-1,))
         fig.write_html(path_to_plotly_html, auto_play = False)
         table = wandb.Table(columns = ["plotly_figure"])
