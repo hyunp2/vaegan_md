@@ -87,7 +87,7 @@ def _main():
     # 1 INIT LIGHTNING MODEL
     # ------------------------
     atom_selection = args.atom_selection
-    pdb = os.path.join(args.load_data_directory, os.path.splitext(args.pdb_file)[0] + "_reduced.pdb")) #string
+    pdb = os.path.join(args.load_data_directory, os.path.splitext(args.pdb_file)[0] + "_reduced.pdb") #string
 #     psf = os.path.join(args.load_data_directory, args.psf_file) #string
     prot_ref = mda.Universe(pdb) #PSF must not be considered
     pos = prot_ref.atoms.select_atoms(atom_selection).positions #L,3; Does not affect anymore since Datamodule already takes care of it!
@@ -202,7 +202,7 @@ def _test(args: argparse.ArgumentParser):
     # 1 INIT LIGHTNING MODEL
     # ------------------------
     atom_selection = args.atom_selection
-    pdb = os.path.join(args.load_data_directory, os.path.splitext(args.pdb_file)[0] + "_reduced.pdb")) #string
+    pdb = os.path.join(args.load_data_directory, os.path.splitext(args.pdb_file)[0] + "_reduced.pdb") #string
 #     psf = os.path.join(args.load_data_directory, args.psf_file) #string
     prot_ref = mda.Universe(pdb) #PSF must not be considered
     pos = prot_ref.atoms.select_atoms(atom_selection).positions #L,3; Does not affect anymore since Datamodule already takes care of it!
@@ -266,7 +266,7 @@ def _sample(args: argparse.ArgumentParser):
     # 1 INIT LIGHTNING MODEL
     # ------------------------
     atom_selection = args.atom_selection
-    pdb = os.path.join(args.load_data_directory, os.path.splitext(args.pdb_file)[0] + "_reduced.pdb")) #string
+    pdb = os.path.join(args.load_data_directory, os.path.splitext(args.pdb_file)[0] + "_reduced.pdb") #string
 #     psf = os.path.join(args.load_data_directory, args.psf_file) #string
     prot_ref = mda.Universe(pdb) #PSF must not be considered
     pos = prot_ref.atoms.select_atoms(atom_selection).positions #L,3; Does not affect anymore since Datamodule already takes care of it!
