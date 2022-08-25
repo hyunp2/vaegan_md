@@ -223,8 +223,6 @@ def _test(args: argparse.ArgumentParser):
         
     csv_logger = pl.loggers.CSVLogger(save_dir=args.load_model_directory)
 
-    datamodule = dl.DataModule(args)
-    datamodule.setup()
     test_dataloaders = datamodule.test_dataloader()
     [setattr(model, key, val) for key, val in zip(["data_mean", "data_std", "loader_length"], [datamodule.mean, datamodule.std, datamodule.trajectory.size(0) ])] #set mean and std
     print("Model's dataset mean and std are set:", model.data_mean, " and ", model.data_std)
@@ -259,6 +257,7 @@ def _sample(args: argparse.ArgumentParser):
     # ------------------------
     # 0 MAKE REDUCED PDB
     # ------------------------
+    args.batch_size = 1000 #Randomly big number
     datamodule = dl.DataModule(args)
     datamodule.setup()
     
@@ -287,30 +286,12 @@ def _sample(args: argparse.ArgumentParser):
         
     csv_logger = pl.loggers.CSVLogger(save_dir=args.load_model_directory)
 
-    datamodule = dl.DataModule(args)
-    datamodule.setup()
     test_dataloaders = datamodule.test_dataloader()
     [setattr(model, key, val) for key, val in zip(["data_mean", "data_std", "loader_length"], [datamodule.mean, datamodule.std, datamodule.trajectory.size(0) ])] #set mean and std
     print("Model's dataset mean and std are set:", model.data_mean, " and ", model.data_std)
     
-    trainer = pl.Trainer(
-        logger=[csv_logger],
-        max_epochs=args.max_epochs,
-        min_epochs=args.min_epochs,
-        precision=args.precision,
-        amp_backend=args.amp_backend,
-        deterministic=False,
-        default_root_dir=args.load_model_directory,
-        num_sanity_val_steps = args.sanity_checks,
-        log_every_n_steps=4,
-        gradient_clip_algorithm="norm",
-        accumulate_grad_batches=args.gradient_accm,
-        gradient_clip_val=args.gradient_clip,
-        devices=args.ngpus,
-        strategy=args.strategy,
-        accelerator=args.accelerator,
-        auto_select_gpus=True,
-    )
+    input_coords = iter(test_dataloaders).next() #Will be Shuffled although!!!
+    model.generate_molecules(input_coords, 0, -1, 200) #Generate recon and interp
 
 if __name__ == "__main__":
     args = get_args()
