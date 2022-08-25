@@ -18,6 +18,8 @@ from MDAnalysis.analysis import align
 from MDAnalysis.coordinates.memory import MemoryReader
 from MDAnalysis.analysis.base import AnalysisFromFunction
 import argparse
+from vaeLightning import Model
+import dataloader as dl 
 
 #/Scr/hyunpark/anaconda3/envs/deeplearning
 
@@ -25,59 +27,80 @@ def get_args():
     parser = argparse.ArgumentParser(description='Training')
 
     #Model related
-    parser.add_argument('--load-model-directory', "-dirm", type=str, default="/Scr/hyunpark/Monster/vaegan/output", help='This is where model is/will be located...')  
-    parser.add_argument('--load-model-checkpoint', "-ckpt", type=str, default=None, help='which checkpoint...')  
-    parser.add_argument('--model', type=str, default='physnet', choices=["physnet"], help='Which model to train')
-    parser.add_argument('--loss_type', type=str, default="total", choices=["boltzmann", "contrastive", "total"], help='Loss functions')
-    parser.add_argument('--save-interval', type=int, default=1, help='Save interval, one save per n epochs (default: 1)')
-    parser.add_argument('--model-config', "-config", type=str, default=None, help='Energy model configuration')
+    parser.add_argument('--load_model_directory', "-dirm", type=str, default="/Scr/hyunpark/Monster/vaegan_md/output", help='Model ROOT directory...')  
+    parser.add_argument('--load_model_checkpoint', "-ckpt", type=str, default=None, help='Find NAME of a CHECKPOINT')  
+    parser.add_argument('--name', type=str, default=None, help='Name for Wandb and GENERATED data!')  
 
     #Molecule (Dataloader) related
-    parser.add_argument('--load-data-directory', "-dird", default="/Scr/hyunpark/Monster/PL_REDO/data", help='This is where data is located...')  
-    parser.add_argument('--save-data-directory', "-sird", default="/Scr/hyunpark/Monster/PL_REDO/data", help='This is where data is located...')  
+    parser.add_argument('--load_data_directory', "-dird", default="/Scr/hyunpark/Monster/PL_REDO/data", help='Locate ORIGINAL data')  
+    parser.add_argument('--save_data_directory', "-sird", default="/Scr/hyunpark/Monster/vaegan_md/generated_data", help='Save GENERATED data')  
+    parser.add_argument('--psf_file', '-psf', type=str, default=None, help='MDAnalysis PSF')
+    parser.add_argument('--pdb_file', '-pdb', type=str, default=None, help='MDAnalysis PDB')
+    parser.add_argument('--trajectory_files', '-traj', type=str, nargs='+', default=None, help='MDAnalysis Trajectories')
     parser.add_argument('--molecule', type=str, default="alanine-dipeptide", help='Which molecule to analyze')
-    parser.add_argument('--atom-selection', '-asel', type=str, default="all", help='MDAnalysis atom selection')
-    parser.add_argument('--psf-file', '-psf', type=str, default=None, help='MDAnalysis PSF')
-    parser.add_argument('--pdb-file', '-pdb', type=str, default=None, help='MDAnalysis PDB')
-    parser.add_argument('--trajectory-files', '-traj', type=str, nargs='+', default=None, help='MDAnalysis Trajectories')
-    parser.add_argument('--split-portion', '-spl', type=int, default=80, help='Torch dataloader and Pytorch lightning split of batches')
+    parser.add_argument('--atom_selection', '-asel', type=str, default="all", help='MDAnalysis atom selection')
+    parser.add_argument('--split_portion', '-spl', type=int, default=80, help='Torch dataloader and Pytorch lightning split of batches')
 
     #Optimizer related
-    parser.add_argument('--num-epochs', default=60, type=int, help='number of epochs')
-    parser.add_argument('--batch-size', '-b', default=2048, type=int, help='batch size')
+    parser.add_argument('--num_epochs', default=100, type=int, help='number of epochs')
+    parser.add_argument('--batch_size', '-b', default=128, type=int, help='batch size')
     parser.add_argument('--lr', default=1e-3, type=float, help='learning rate')
     parser.add_argument('--ngpus', type=int, default=-1, help='Number of GPUs, -1 use all available. Use CUDA_VISIBLE_DEVICES=1, to decide gpus')
-    parser.add_argument('--num-nodes', type=int, default=1, help='Number of nodes')
-    parser.add_argument('--warm-up-split', type=int, default=5, help='warmup times')
+    parser.add_argument('--num_nodes', type=int, default=1, help='Number of nodes')
+    parser.add_argument('--warm_up_split', type=int, default=5, help='warmup times')
     parser.add_argument('--scheduler', type=str, default="cosine", help='scheduler type')
-
+    parser.add_argument('--max_epochs', default=60, type=int, help='number of epochs max')
+    parser.add_argument('--min_epochs', default=1, type=int, help='number of epochs min')
+    parser.add_argument('--precision', type=int, default=32, choices=[16, 32], help='Floating point precision')
+    parser.add_argument('--monitor', type=str, default="epoch_val_loss", help='metric to watch')
+    parser.add_argument('--loss', '-l', type=str, default="classification", choices=['classification', 'contrastive', 'ner'], help='loss for training')
+    parser.add_argument('--save_top_k', type=int, default="5", help='num of models to save')
+    parser.add_argument('--patience', type=int, default=10, help='patience for stopping')
+    parser.add_argument('--metric_mode', type=str, default="min", help='mode of monitor')
+    parser.add_argument('--amp_backend', type=str, default="native", help='Torch vs NVIDIA AMP')
+    parser.add_argument('--sanity_checks', '-sc', type=int, default=2, help='Num sanity checks..')
+    parser.add_argument('--accelerator', "-accl", type=str, default="gpu", help='accelerator type', choices=["cpu","gpu","tpu"])
+    parser.add_argument('--strategy', "-st", default="ddp", help='accelerator type', choices=["ddp_spawn","ddp","dp","ddp2","horovod","none"])
+    
     #Misc.
     parser.add_argument('--precision', type=int, default=32, choices=[16, 32], help='Floating point precision')
-    parser.add_argument('--distributed-backend', default='ddp', help='Distributed backend: dp, ddp, ddp2')
-    parser.add_argument('--num-workers', type=int, default=4, help='Number of workers for data prefetch')
+    parser.add_argument('--distributed_backend', default='ddp', help='Distributed backend: dp, ddp, ddp2')
+    parser.add_argument('--num_workers', type=int, default=4, help='Number of workers for data prefetch')
+    parser.add_argument('--train_mode', type=str, default="train", choices=["train","test","pred"])
+    parser.add_argument('--seed', type=int, default=42)
 
     args = parser.parse_args()
     return args
 
 def _main():
     args = get_args()
-
+    
     pl.seed_everything(args.seed)
 
     # ------------------------
     # 1 INIT LIGHTNING MODEL
     # ------------------------
-    model = Model.ProtBertClassifier.load_from_checkpoint( os.path.join(args.load_model_directory, args.load_model_checkpoint), hparam=args, strict=True ) if args.load_model_checkpoint else Model(args)
+    atom_selection = args.atom_selection
+    pdb = os.path.join(args.load_data_directory, args.pdb_file) #string
+    psf = os.path.join(args.load_data_directory, args.psf_file) #string
+    prot_ref = mda.Universe(psf, pdb)
+    pos = prot_ref.atoms.select_atoms(atom_selection).positions #L,3
+    unrolled_dim = pos.shape[0] * pos.shape[1]
+    
+    model_configs = dict(hidden_dims_enc=[1500, 750, 400, 200, 200],
+                         hidden_dims_dec=[100, 200, 400, 750, 1500],
+                         unrolled_dim=unrolled_dim)
+    model = Model.Model.load_from_checkpoint( os.path.join(args.load_model_directory, args.load_model_checkpoint), args=args, model_configs=model_configs, strict=True ) if args.load_model_checkpoint else Model(args=args, model_configs=model_configs)
 
     # ------------------------
     # 2 INIT EARLY STOPPING
     # ------------------------
     early_stop_callback = pl.callbacks.EarlyStopping(
-    monitor=args.monitor,
-    min_delta=0.0,
-    patience=args.patience,
-    verbose=True,
-    mode=args.metric_mode,
+        monitor=args.monitor,
+        min_delta=0.0,
+        patience=args.patience,
+        verbose=True,
+        mode=args.metric_mode,
     )
 
     # --------------------------------
@@ -130,7 +153,12 @@ def _main():
         
     if args.strategy in ["none", None]:
         args.strategy = None
-        
+    
+    datamodule = dl.DataModule(args)
+    train_dataloaders, val_dataloaders = datamodule.train_dataloader(), datamodule.val_dataloader()
+    [setattr(model, key, val) for key, val in zip(["data_mean", "data_std"], [datamodule.mean, datamodule.std])] #set mean and std
+    print("Model's dataset mean and std are set:", model.data_mean, " and ", model.data_std)
+
     trainer = pl.Trainer(
         logger=[csv_logger],
         max_epochs=args.max_epochs,
@@ -150,7 +178,7 @@ def _main():
         auto_select_gpus=True,
     )
 
-    trainer.fit(model) #New API!
+    trainer.fit(model, train_dataloaders, val_dataloaders) #New API!
     
 def _test(args: argparse.ArgumentParser):
 #     hparams = get_args()
@@ -160,8 +188,17 @@ def _test(args: argparse.ArgumentParser):
     # ------------------------
     # 1 INIT LIGHTNING MODEL
     # ------------------------
-    model = Model.ProtBertClassifier.load_from_checkpoint( os.path.join(args.load_model_directory, args.load_model_checkpoint), hparam=args, strict=True )
-    print("PASS")
+    atom_selection = args.atom_selection
+    pdb = os.path.join(args.load_data_directory, args.pdb_file) #string
+    psf = os.path.join(args.load_data_directory, args.psf_file) #string
+    prot_ref = mda.Universe(psf, pdb)
+    pos = prot_ref.atoms.select_atoms(atom_selection).positions #L,3
+    unrolled_dim = pos.shape[0] * pos.shape[1]
+    
+    model_configs = dict(hidden_dims_enc=[1500, 750, 400, 200, 200],
+                         hidden_dims_dec=[100, 200, 400, 750, 1500],
+                         unrolled_dim=unrolled_dim)
+    model = Model.Model.load_from_checkpoint( os.path.join(args.load_model_directory, args.load_model_checkpoint), args=args, model_configs=model_configs, strict=True ) if args.load_model_checkpoint else Model(args=args, model_configs=model_configs)
     
     if args.load_model_checkpoint:
         resume_ckpt = os.path.join(args.load_model_directory, args.load_model_checkpoint)
@@ -173,6 +210,11 @@ def _test(args: argparse.ArgumentParser):
         
     csv_logger = pl.loggers.CSVLogger(save_dir=args.load_model_directory)
 
+    datamodule = dl.DataModule(args)
+    test_dataloaders = datamodule.test_dataloader()
+    [setattr(model, key, val) for key, val in zip(["data_mean", "data_std"], [datamodule.mean, datamodule.std])] #set mean and std
+    print("Model's dataset mean and std are set:", model.data_mean, " and ", model.data_std)
+    
     trainer = pl.Trainer(
         logger=[csv_logger],
         max_epochs=args.max_epochs,
