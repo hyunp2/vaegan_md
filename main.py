@@ -67,6 +67,7 @@ def get_args():
     parser.add_argument('--num_workers', type=int, default=4, help='Number of workers for data prefetch')
     parser.add_argument('--train_mode', type=str, default="train", choices=["train","test","pred"])
     parser.add_argument('--seed', type=int, default=42)
+    parser.add_argument('--beata', type=float, default=1., "beta-VAE")
 
     args = parser.parse_args()
     return args
