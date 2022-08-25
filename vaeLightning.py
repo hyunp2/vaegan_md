@@ -34,7 +34,7 @@ class Model(pl.LightningModule):
         
         self.args = args
         model_configs = kwargs.get("model_configs", None)
-        self.model_block = VAE.VAE(**model_configs)     
+        self.model_block = VAE.VAE(args, **model_configs)     
         self.beta = args.beta
         self.data_mean = None
         self.data_std = None
