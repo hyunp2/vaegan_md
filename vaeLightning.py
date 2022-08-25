@@ -312,7 +312,7 @@ class Model(pl.LightningModule):
         z, mu, logstd, x = self(original) #"latend_coordinates of (B,latent_dim)"
         inputs = mu[start_idx] # dim,
         outputs = mu[end_idx] # dim,
-        lerps = self.lerp(inputs=inputs, outputs=outputs, interps=torch.linspace(0, 1, num_interps)[1:-1]) #(Num_interpolations by latent_dim)
+        lerps = self.lerp(start=inputs, end=outputs, t=torch.linspace(0, 1, num_interps)[1:-1]) #(Num_interpolations by latent_dim)
         
         mean = self.data_mean #make sure dmo is saved as an argparse
         std = self.data_std
