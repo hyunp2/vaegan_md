@@ -127,7 +127,7 @@ class Model(pl.LightningModule):
             fig.write_html(path_to_plotly_html, auto_play = False)
             table.add_data(wandb.Html( open(path_to_plotly_html) ))
 #         wandb.log({f"{proj.__class__.__name__} Plot {title}": table}) #Avoids overlap!
-        wandb.log({f"{Latent} Plot {title}": table})
+        wandb.log({f"Latent Plot {title}": table})
 #         return proj #Fitted 
 
     def on_validation_epoch_start(self, ) -> None:
