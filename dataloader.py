@@ -20,6 +20,8 @@ from MDAnalysis.analysis.base import AnalysisFromFunction
 import main as Main
 import pdb as PDB
 
+__all__ = ["DataModule"]
+
 def extract_trajectory(args):
     atom_selection = args.atom_selection
     assert args.pdb_file != None and args.psf_file != None, "both PDB and PSF must be provides..."
@@ -70,9 +72,11 @@ class ProteinDataset(torch.utils.data.Dataset):
         return coords_ #Reconstructed unscaled (i.e. raw) dataset (BL3)
 
 class DataModule(pl.LightningDataModule):
-    def __init__(self, dataset: ProteinDataset=None, args=None, **kwargs):
+    def __init__(self, args=None, **kwargs):
         super(DataModule, self).__init__()
-        self.dataset = dataset
+        datasets = extract_trajectory(args) #tuple of reference and traj
+        ProteinDataset(datasets)
+        self.dataset = ProteinDataset(datasets)
         self.reference = dataset.reference #Reference data of (1,L,3)
         self.trajectory = dataset.trajectory #Trajectory (B,L,3)
         self.mean = dataset.mean
@@ -91,13 +95,13 @@ class DataModule(pl.LightningDataModule):
         self.trainset, self.validset, self.testset = torch.utils.data.random_split(self.trajectory, [self.train_data_length, self.valid_data_length, len(self.dataset) - self.train_data_length - self.valid_data_length], generator=torch.Generator().manual_seed(self.seed)) 
 
     def train_dataloader(self):
-        return torch.utils.data.DataLoader(self.trainset, num_workers=self.num_workers, batch_sampler=torch.utils.data.BatchSampler(torch.utils.data.RandomSampler(self.trainset, generator=torch.Generator().manual_seed(self.seed)), batch_size=self.batch_size, drop_last=False), pin_memory=True)
+        return torch.utils.data.DataLoader(self.trainset, shuffle=True, num_workers=self.num_workers, batch_sampler=torch.utils.data.BatchSampler(torch.utils.data.RandomSampler(self.trainset, generator=torch.Generator().manual_seed(self.seed)), batch_size=self.batch_size, drop_last=False), pin_memory=True)
 
     def val_dataloader(self):
-        return torch.utils.data.DataLoader(self.validset, num_workers=self.num_workers, batch_sampler=torch.utils.data.BatchSampler(torch.utils.data.RandomSampler(self.validset, generator=torch.Generator().manual_seed(self.seed)), batch_size=self.batch_size, drop_last=False), pin_memory=True)
+        return torch.utils.data.DataLoader(self.validset, shuffle=False, num_workers=self.num_workers, batch_sampler=torch.utils.data.BatchSampler(torch.utils.data.RandomSampler(self.validset, generator=torch.Generator().manual_seed(self.seed)), batch_size=self.batch_size, drop_last=False), pin_memory=True)
 
     def test_dataloader(self):
-        return torch.utils.data.DataLoader(self.testset, num_workers=self.num_workers, batch_sampler=torch.utils.data.BatchSampler(torch.utils.data.RandomSampler(self.testset, generator=torch.Generator().manual_seed(self.seed)), batch_size=self.batch_size, drop_last=False), pin_memory=True)
+        return torch.utils.data.DataLoader(self.testset, shuffle=False, num_workers=self.num_workers, batch_sampler=torch.utils.data.BatchSampler(torch.utils.data.RandomSampler(self.testset, generator=torch.Generator().manual_seed(self.seed)), batch_size=self.batch_size, drop_last=False), pin_memory=True)
 
 if __name__ == "__main__":
     args = Main.get_args()
