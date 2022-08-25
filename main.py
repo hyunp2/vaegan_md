@@ -155,6 +155,7 @@ def _main():
         args.strategy = None
     
     datamodule = dl.DataModule(args)
+    datamodule.setup()
     train_dataloaders, val_dataloaders = datamodule.train_dataloader(), datamodule.val_dataloader()
     [setattr(model, key, val) for key, val in zip(["data_mean", "data_std"], [datamodule.mean, datamodule.std])] #set mean and std
     print("Model's dataset mean and std are set:", model.data_mean, " and ", model.data_std)
@@ -211,6 +212,7 @@ def _test(args: argparse.ArgumentParser):
     csv_logger = pl.loggers.CSVLogger(save_dir=args.load_model_directory)
 
     datamodule = dl.DataModule(args)
+    datamodule.setup()
     test_dataloaders = datamodule.test_dataloader()
     [setattr(model, key, val) for key, val in zip(["data_mean", "data_std"], [datamodule.mean, datamodule.std])] #set mean and std
     print("Model's dataset mean and std are set:", model.data_mean, " and ", model.data_std)
