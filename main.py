@@ -177,9 +177,10 @@ def _main():
         strategy=args.strategy,
         accelerator=args.accelerator,
         auto_select_gpus=True,
+        
     )
 
-    trainer.fit(model, train_dataloaders, val_dataloaders) #New API!
+    trainer.fit(model, train_dataloaders, val_dataloaders, ckpt_path=resume_ckpt) #New API!
     
 def _test(args: argparse.ArgumentParser):
 #     hparams = get_args()
@@ -235,10 +236,10 @@ def _test(args: argparse.ArgumentParser):
         auto_select_gpus=True,
     )
     if args.train_mode in ["test"]:
-        trainer.test(model) #New API!
+        trainer.test(model, ckpt_path=resume_ckpt) #New API!
     elif args.train_mode in ["pred"]:
         test_dataloader = model.test_dataloader()
-        trainer.predict(model, dataloaders=test_dataloader)
+        trainer.predict(model, dataloaders=test_dataloader, ckpt_path=resume_ckpt)
 
 if __name__ == "__main__":
     args = get_args()
