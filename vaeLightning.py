@@ -71,7 +71,7 @@ class Model(pl.LightningModule):
                    })
         loss = (mse - kl)
         self.log("train_loss", loss, prog_bar=True)
-        return {"loss": loss, "train_kl": kl.item(), "train_mse": mse.item()}
+        return {"loss": loss, "train_kl": kl, "train_mse": mse}
 
     def training_epoch_end(self, training_step_outputs):
         if not self.trainer.sanity_checking:
@@ -116,7 +116,7 @@ class Model(pl.LightningModule):
                    })
         loss = (mse - kl)
         self.log("val_loss", loss, prog_bar=True)
-        return {"val_loss": loss, "val_kl": kl.item(), "val_mse": mse.item(), "mu": mu, "logstd": logstd}
+        return {"val_loss": loss, "val_kl": kl, "val_mse": mse, "mu": mu, "logstd": logstd}
 
     def validation_epoch_end(self, validation_step_outputs):
         if not self.trainer.sanity_checking:
@@ -151,7 +151,7 @@ class Model(pl.LightningModule):
                    })
         loss = (mse - kl)
         self.log("test_loss", loss, prog_bar=True)
-        return {"test_loss": loss, "test_kl": kl.item(), "test_mse": mse.item(), "mu": mu, "logstd": logstd}
+        return {"test_loss": loss, "test_kl": kl, "test_mse": mse, "mu": mu, "logstd": logstd}
 
     def test_epoch_end(self, test_step_outputs):
         if not self.trainer.sanity_checking:
