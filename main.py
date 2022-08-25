@@ -108,7 +108,7 @@ def _main():
     #  -------------------------------
     # initialize Model Checkpoint Saver
     checkpoint_callback = pl.callbacks.ModelCheckpoint(
-    filename="{epoch}-{train_loss_mean:.2f}-{val_loss_mean:.2f}",
+    filename="{epoch}-{epoch_train_loss:.2f}-{epoch_val_loss:.2f}",
     save_top_k=args.save_top_k,
     verbose=True,
     monitor=args.monitor,
