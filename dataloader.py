@@ -17,7 +17,7 @@ import pytorch_lightning as pl
 from MDAnalysis.analysis import align
 from MDAnalysis.coordinates.memory import MemoryReader
 from MDAnalysis.analysis.base import AnalysisFromFunction
-import main as Main
+# import main as Main
 import pdb as PDB
 
 __all__ = ["DataModule"]
@@ -103,14 +103,15 @@ class DataModule(pl.LightningDataModule):
         return torch.utils.data.DataLoader(self.testset, shuffle=False, num_workers=self.num_workers, batch_sampler=torch.utils.data.BatchSampler(torch.utils.data.RandomSampler(self.testset, generator=torch.Generator().manual_seed(self.seed)), batch_size=self.batch_size, drop_last=False), pin_memory=True)
 
 if __name__ == "__main__":
-    args = Main.get_args()
-    args.batch_size = 50
-    reference, trajectory = extract_trajectory(args)
-    dataset = ProteinDataset([reference, trajectory])
-    dmo = DataModule(dataset, args, seed=42)
-    dmo.prepare_data()
-    dmo.setup()
-    print(next(iter(dmo.train_dataloader())))
-    print((ProteinDataset.unnormalize(next(iter(dmo.train_dataloader())), dataset.mean, dataset.std)))
-    #python dataloader.py -psf reference_autopsf.psf -pdb reference_autopsf.pdb -traj adk.dcd
+    pass
+#     args = Main.get_args()
+#     args.batch_size = 50
+#     reference, trajectory = extract_trajectory(args)
+#     dataset = ProteinDataset([reference, trajectory])
+#     dmo = DataModule(dataset, args, seed=42)
+#     dmo.prepare_data()
+#     dmo.setup()
+#     print(next(iter(dmo.train_dataloader())))
+#     print((ProteinDataset.unnormalize(next(iter(dmo.train_dataloader())), dataset.mean, dataset.std)))
+#     #python dataloader.py -psf reference_autopsf.psf -pdb reference_autopsf.pdb -traj adk.dcd
 
