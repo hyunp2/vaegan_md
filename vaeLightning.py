@@ -117,10 +117,15 @@ class Model(pl.LightningModule):
         assert len(mus.shape) == 2 and len(logstds.shape) == 2
         path_to_plotly_html = os.path.join(args.save_data_directory, "plotly_figure.html")
         dist = scipy.stats.multivariate_normal(np.zeros(mus.shape[1]), 1)
-        fig = px.scatter(x=mus_proj[:,0], y=mus_proj[:,1], color=dist.pdf(mus).reshape(-1,))
-        fig.write_html(path_to_plotly_html, auto_play = False)
         table = wandb.Table(columns = ["plotly_figure"])
-        table.add_data(wandb.Html( open(path_to_plotly_html) ))
+        colors = [mus, logstds]
+        for i, c in enumerate(colors):
+            if i == 0:
+                fig = px.scatter(x=mus[:,0], y=mus[:,1], color=dist.pdf(c).reshape(-1,)) 
+            elif i == 1:
+                fig = px.scatter(x=mus[:,0], y=mus[:,1], color=np.exp(c.sum(axis=-1)).reshape(-1,)) 
+            fig.write_html(path_to_plotly_html, auto_play = False)
+            table.add_data(wandb.Html( open(path_to_plotly_html) ))
         wandb.log({f"{proj.__class__.__name__} Plot {title}": table}) #Avoids overlap!
 #         return proj #Fitted 
 
