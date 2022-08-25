@@ -184,9 +184,9 @@ class Model(pl.LightningModule):
         optimizer = tfm.AdamW(self.model_block.parameters(), lr=self.args.lr)
         total_training_steps = self.loader_length * self.args.num_epochs
         warmup_steps = total_training_steps // self.args.warm_up_split
-        if self.scheduler == "cosine":
+        if self.args.scheduler == "cosine":
             scheduler = tfm.get_cosine_with_hard_restarts_schedule_with_warmup(optimizer, num_warmup_steps = warmup_steps, num_training_steps=total_training_steps, num_cycles = 1, last_epoch = -1)
-        elif self.scheduler == "linear":
+        elif self.args.scheduler == "linear":
             scheduler = tfm.get_linear_schedule_with_warmup(optimizer, num_warmup_steps = warmup_steps, num_training_steps=total_training_steps, last_epoch = -1)
         scheduler = {"scheduler": scheduler, "interval": "step", "frequency": 1} #Every step/epoch with Frequency 1etc by monitoring val_loss if needed
         return [optimizer], [scheduler]
