@@ -60,8 +60,8 @@ def get_args():
     parser.add_argument('--sanity_checks', '-sc', type=int, default=2, help='Num sanity checks..')
     parser.add_argument('--accelerator', "-accl", type=str, default="gpu", help='accelerator type', choices=["cpu","gpu","tpu"])
     parser.add_argument('--strategy', "-st", default="ddp", help='accelerator type', choices=["ddp_spawn","ddp","dp","ddp2","horovod","none"])
-    parser.add_argument('--gradient_clip', "-gclip", default=1., help='norm clip value')
-    parser.add_argument('--gradient_accm', "-gaccm", default=1, help='accm value')
+    parser.add_argument('--gradient_clip', "-gclip", default=1., type=float, help='norm clip value')
+    parser.add_argument('--gradient_accm', "-gaccm", default=1, type=int, help='accm value')
 
     #Misc.
     parser.add_argument('--num_workers', type=int, default=4, help='Number of workers for data prefetch')
