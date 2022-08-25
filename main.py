@@ -246,10 +246,10 @@ def _test(args: argparse.ArgumentParser):
         auto_select_gpus=True,
     )
     if args.train_mode in ["test"]:
-        trainer.test(model, ckpt_path=resume_ckpt) #New API!
+        trainer.test(model, dataloaders=test_dataloaders, ckpt_path=resume_ckpt) #New API!
     elif args.train_mode in ["pred"]:
         test_dataloader = model.test_dataloader()
-        trainer.predict(model, dataloaders=test_dataloader, ckpt_path=resume_ckpt)
+        trainer.predict(model, dataloaders=test_dataloaders, ckpt_path=resume_ckpt)
         
 def _sample(args: argparse.ArgumentParser):
     pl.seed_everything(args.seed)
