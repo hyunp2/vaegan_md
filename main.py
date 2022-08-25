@@ -63,7 +63,6 @@ def get_args():
     parser.add_argument('--strategy', "-st", default="ddp", help='accelerator type', choices=["ddp_spawn","ddp","dp","ddp2","horovod","none"])
     
     #Misc.
-    parser.add_argument('--precision', type=int, default=32, choices=[16, 32], help='Floating point precision')
     parser.add_argument('--distributed_backend', default='ddp', help='Distributed backend: dp, ddp, ddp2')
     parser.add_argument('--num_workers', type=int, default=4, help='Number of workers for data prefetch')
     parser.add_argument('--train_mode', type=str, default="train", choices=["train","test","pred"])
