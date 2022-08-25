@@ -17,6 +17,7 @@ import pytorch_lightning as pl
 from MDAnalysis.analysis import align
 from MDAnalysis.coordinates.memory import MemoryReader
 from MDAnalysis.analysis.base import AnalysisFromFunction
+import argparse
 
 warnings.simplefilter("ignore")
 
