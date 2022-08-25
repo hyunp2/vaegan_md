@@ -53,7 +53,6 @@ def get_args():
     parser.add_argument('--min_epochs', default=1, type=int, help='number of epochs min')
     parser.add_argument('--precision', type=int, default=32, choices=[16, 32], help='Floating point precision')
     parser.add_argument('--monitor', type=str, default="epoch_val_loss", help='metric to watch')
-    parser.add_argument('--loss', '-l', type=str, default="classification", choices=['classification', 'contrastive', 'ner'], help='loss for training')
     parser.add_argument('--save_top_k', type=int, default="5", help='num of models to save')
     parser.add_argument('--patience', type=int, default=10, help='patience for stopping')
     parser.add_argument('--metric_mode', type=str, default="min", help='mode of monitor')
@@ -61,9 +60,10 @@ def get_args():
     parser.add_argument('--sanity_checks', '-sc', type=int, default=2, help='Num sanity checks..')
     parser.add_argument('--accelerator', "-accl", type=str, default="gpu", help='accelerator type', choices=["cpu","gpu","tpu"])
     parser.add_argument('--strategy', "-st", default="ddp", help='accelerator type', choices=["ddp_spawn","ddp","dp","ddp2","horovod","none"])
-    
+    parser.add_argument('--gradient_clip', "-gclip", default=1., help='norm clip value')
+    parser.add_argument('--gradient_accm', "-gaccm", default=1, help='accm value')
+
     #Misc.
-    parser.add_argument('--distributed_backend', default='ddp', help='Distributed backend: dp, ddp, ddp2')
     parser.add_argument('--num_workers', type=int, default=4, help='Number of workers for data prefetch')
     parser.add_argument('--train_mode', type=str, default="train", choices=["train","test","pred"])
     parser.add_argument('--seed', type=int, default=42)
@@ -172,7 +172,8 @@ def _main():
         num_sanity_val_steps = args.sanity_checks,
         log_every_n_steps=4,
         gradient_clip_algorithm="norm",
-        gradient_clip_val=1.,
+        accumulate_grad_batches=args.gradient_accm,
+        gradient_clip_val=args.gradient_clip,
         devices=args.ngpus,
         strategy=args.strategy,
         accelerator=args.accelerator,
@@ -229,7 +230,8 @@ def _test(args: argparse.ArgumentParser):
         num_sanity_val_steps = args.sanity_checks,
         log_every_n_steps=4,
         gradient_clip_algorithm="norm",
-        gradient_clip_val=1.,
+        accumulate_grad_batches=args.gradient_accm,
+        gradient_clip_val=args.gradient_clip,
         devices=args.ngpus,
         strategy=args.strategy,
         accelerator=args.accelerator,
@@ -240,6 +242,59 @@ def _test(args: argparse.ArgumentParser):
     elif args.train_mode in ["pred"]:
         test_dataloader = model.test_dataloader()
         trainer.predict(model, dataloaders=test_dataloader, ckpt_path=resume_ckpt)
+        
+def _sample(args: argparse.ArgumentParser):
+    pl.seed_everything(args.seed)
+
+    # ------------------------
+    # 1 INIT LIGHTNING MODEL
+    # ------------------------
+    atom_selection = args.atom_selection
+    pdb = os.path.join(args.load_data_directory, args.pdb_file) #string
+    psf = os.path.join(args.load_data_directory, args.psf_file) #string
+    prot_ref = mda.Universe(psf, pdb)
+    pos = prot_ref.atoms.select_atoms(atom_selection).positions #L,3
+    unrolled_dim = pos.shape[0] * pos.shape[1]
+    
+    model_configs = dict(hidden_dims_enc=[1500, 750, 400, 200, 200],
+                         hidden_dims_dec=[100, 200, 400, 750, 1500],
+                         unrolled_dim=unrolled_dim)
+    model = Model.Model.load_from_checkpoint( os.path.join(args.load_model_directory, args.load_model_checkpoint), args=args, model_configs=model_configs, strict=True ) if args.load_model_checkpoint else Model(args=args, model_configs=model_configs)
+    
+    if args.load_model_checkpoint:
+        resume_ckpt = os.path.join(args.load_model_directory, args.load_model_checkpoint)
+    else:
+        resume_ckpt = None
+        
+    if args.strategy in ["none", None]:
+        args.strategy = None
+        
+    csv_logger = pl.loggers.CSVLogger(save_dir=args.load_model_directory)
+
+    datamodule = dl.DataModule(args)
+    datamodule.setup()
+    test_dataloaders = datamodule.test_dataloader()
+    [setattr(model, key, val) for key, val in zip(["data_mean", "data_std", "loader_length"], [datamodule.mean, datamodule.std, datamodule.trajectory.size(0) ])] #set mean and std
+    print("Model's dataset mean and std are set:", model.data_mean, " and ", model.data_std)
+    
+    trainer = pl.Trainer(
+        logger=[csv_logger],
+        max_epochs=args.max_epochs,
+        min_epochs=args.min_epochs,
+        precision=args.precision,
+        amp_backend=args.amp_backend,
+        deterministic=False,
+        default_root_dir=args.load_model_directory,
+        num_sanity_val_steps = args.sanity_checks,
+        log_every_n_steps=4,
+        gradient_clip_algorithm="norm",
+        accumulate_grad_batches=args.gradient_accm,
+        gradient_clip_val=args.gradient_clip,
+        devices=args.ngpus,
+        strategy=args.strategy,
+        accelerator=args.accelerator,
+        auto_select_gpus=True,
+    )
 
 if __name__ == "__main__":
     args = get_args()
