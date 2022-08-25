@@ -211,7 +211,7 @@ class Model(pl.LightningModule):
                    'epoch_test_mse': epoch_test_mse,
                    'epoch_test_kl': epoch_test_kl,
         })
-        self.plot_manifold(self.args, mus.detach().cpu().numpy(), logstds.detach().cpu().numpy())
+        self.plot_manifold(self.args, mus.detach().cpu().numpy(), logstds.detach().cpu().numpy(), self.current_epoch)
 
 #     def on_predict_epoch_start(self, ):
 #         #Called per EPOCH!
