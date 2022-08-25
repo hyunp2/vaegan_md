@@ -38,6 +38,7 @@ class Model(pl.LightningModule):
         self.beta = args.beta
         self.data_mean = None
         self.data_std = None
+        self.loader_length = None
         
         wandb.init(project="VAEGAN_MD", entity="hyunp2", name=args.name)
         wandb.watch(self.model_block, log="all")
