@@ -241,7 +241,7 @@ class Model(pl.LightningModule):
 
 
     def lerp(self, start: "1D tensor of features", end: "1D tensor of features", t: "1D tensor of weights"=1):
-        outs = start + (end - start) * t.view(-1,1).to(inputs)
+        outs = start + (end - start) * t.view(-1,1).to(self.device)
         return outs #(num_interpolations, dim)
         
     def _geometric_slerp(start, end, t):
