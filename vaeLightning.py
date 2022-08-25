@@ -203,7 +203,7 @@ class Model(pl.LightningModule):
 #         self.df = []
 
 #     def predict_step(self, batch, batch_idx, dataloader_idx=0):
-#         self._shared_step(batch, batch_idx, stage="pred")
+#         generate_molecules
         
 #     def on_predict_epoch_end(self, ):
 #         #Called per EPOCH!
