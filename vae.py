@@ -26,7 +26,7 @@ torch.set_printoptions(precision=4)
 
 ##################################
 class Encoder(torch.nn.Module):
-    def __init__(self, hidden_dims=[1500, 750, 400, 200, 200], **kwargs):
+    def __init__(self, hidden_dims=[1000, 500, 100, 50, 4], **kwargs):
         super().__init__()
         self.hidden_dims = hidden_dims
         self.unrolled_dim = kwargs.get("unrolled_dim") #xyz coord dim of original protein trajectory
@@ -54,7 +54,7 @@ class Encoder(torch.nn.Module):
         return mu + logstd.exp() * torch.distributions.Normal(0., 0.1).rsample((shapes)).to(mu)
 
 class Decoder(torch.nn.Module):
-    def __init__(self, hidden_dims=list(reversed([1500, 750, 400, 200, 100])), **kwargs):
+    def __init__(self, hidden_dims=list(reversed([2, 50, 100, 500, 1000])), **kwargs):
         super().__init__()
         self.hidden_dims = hidden_dims
         self.unrolled_dim = kwargs.get("unrolled_dim") #xyz coord dim of original protein trajectory
