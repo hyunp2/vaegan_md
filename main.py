@@ -246,17 +246,12 @@ if __name__ == "__main__":
     
     if args.train_mode in ["train"]:
         _main()
-#     python -m train --json_directory /Scr/hyunpark/DL_Sequence_Collab/ProtLIpInt/ --save_to_file data_compiled.pickle --train_mode train   
     elif args.train_mode in ["test"]:
         _test()
-#     python -m train --json_directory /Scr/hyunpark/DL_Sequence_Collab/ProtLIpInt/ --save_to_file data_compiled.pickle --load_model_checkpoint epoch=59-train_loss_mean=0.08-val_loss_mean=0.10.ckpt --train_mode test  
 
     elif args.train_mode in ["pred"]:
         _test(args)
-#     python -m train --json_directory /Scr/hyunpark/DL_Sequence_Collab/ProtLIpInt/ --save_to_file data_compiled.pickle --load_model_checkpoint epoch=59-train_loss_mean=0.08-val_loss_mean=0.10.ckpt --train_mode pred  
-
-
-    
 
 if __name__ == "__main__":
     main()
+    python -m main --psf_file 3f48final.psf --pdb_file 3f48finaleqnbfix.pdb --trajectory_files force5tm18_afterreleaseeq_nbfix.dcd --strategy none --batch_size 16
