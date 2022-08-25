@@ -86,7 +86,7 @@ class Model(pl.LightningModule):
                        'epoch_train_kl': epoch_train_kl,})
 
     @staticmethod
-    def plot_manifold(args: argparse.ArgumentParser, mus: np.ndarray, logstds: np.ndarray, title: str):
+    def plot_manifold(args: argparse.ArgumentParser, zs: torch.Tensor, mus: torch.Tensor, logstds: torch.Tensor, title: str):
         #WIP for PCA or UMAP or MDS
         #summary is 
         import sklearn.manifold
