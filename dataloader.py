@@ -36,7 +36,7 @@ def extract_trajectory(args):
     prot_ref_ag = prot_ref.atoms.select_atoms(f"{atom_selection}")
     
     reduced_pdb_file = os.path.join(args.load_data_directory, os.path.splitext(args.pdb_file)[0] + "_reduced.pdb")
-    if not os.path.exist(reduced_pdb_file)
+    if not os.path.exist(reduced_pdb_file):
         prot_ref_ag.write(reduced_pdb_file) #write a reduced file; based on atom selection!
     else:
         pass
