@@ -157,7 +157,7 @@ def _main():
     datamodule = dl.DataModule(args)
     datamodule.setup()
     train_dataloaders, val_dataloaders = datamodule.train_dataloader(), datamodule.val_dataloader()
-    [setattr(model, key, val) for key, val in zip(["data_mean", "data_std"], [datamodule.mean, datamodule.std])] #set mean and std
+    [setattr(model, key, val) for key, val in zip(["data_mean", "data_std", "loader_length"], [datamodule.mean, datamodule.std, datamodule.trajectory.size(0) ])] #set mean and std
     print("Model's dataset mean and std are set:", model.data_mean, " and ", model.data_std)
 
     trainer = pl.Trainer(
