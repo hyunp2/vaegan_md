@@ -310,8 +310,8 @@ class Model(pl.LightningModule):
         """MOVE to pl.Callback!
         WIP: Add Plotly functions!"""
         z, mu, logstd, x = self(original) #"latend_coordinates of (B,latent_dim)"
-        inputs = latent[start_idx] # dim,
-        outputs = latent[end_idx] # dim,
+        inputs = mu[start_idx] # dim,
+        outputs = mu[end_idx] # dim,
         lerps = self.lerp(inputs=inputs, outputs=outputs, interps=torch.linspace(0, 1, num_interps)[1:-1]) #(Num_interpolations by latent_dim)
         
         mean = self.data_mean #make sure dmo is saved as an argparse
