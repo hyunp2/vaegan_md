@@ -36,6 +36,8 @@ class Model(pl.LightningModule):
         model_configs = kwargs.get("model_configs", None)
         self.model_block = VAE.VAE(**model_configs)     
         self.beta = args.beta
+        self.data_mean = None
+        self.data_std = None
         
         wandb.init(project="VAEGAN_MD", entity="hyunp2", name=args.name)
         wandb.watch(self.model_block, log="all")
@@ -266,8 +268,8 @@ class Model(pl.LightningModule):
         outputs = latent[end_idx] # dim,
         lerps = self.lerp(inputs=inputs, outputs=outputs, interps=torch.linspace(0, 1, num_interps)[1:-1]) #(Num_interpolations by latent_dim)
         
-        mean = self.args.data_mean #make sure dmo is saved as an argparse
-        std = self.args.data_std
+        mean = self.data_mean #make sure dmo is saved as an argparse
+        std = self.data_std
         unnormalize = dl.ProteinDataset.unnormalize #static method
 
         recon_scaled = self.model_block.decoder(mu) #BL3, (scaled coord)
