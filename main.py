@@ -300,10 +300,10 @@ if __name__ == "__main__":
     if args.train_mode in ["train"]:
         _main()
     elif args.train_mode in ["test"]:
-        _test()
+        _test(args)
     elif args.train_mode in ["pred"]:
         _test(args)
     elif args.train_mode in ["sample"]:
-        _sample()
+        _sample(args)
         
 #     python -m main --psf_file 3f48final.psf --pdb_file 3f48finaleqnbfix.pdb --trajectory_files force5tm18_afterreleaseeq_nbfix.dcd --strategy none --batch_size 16
