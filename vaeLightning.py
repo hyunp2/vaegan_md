@@ -85,7 +85,7 @@ class Model(pl.LightningModule):
                        'epoch_train_kl': epoch_train_kl,})
 
     @staticmethod
-    def plot_manifold(args: argparse.ArgumentParser, mus: np.ndarray, logstds: np.ndarray):
+    def plot_manifold(args: argparse.ArgumentParser, mus: np.ndarray, logstds: np.ndarray, title: str):
         #WIP for PCA or UMAP or MDS
         #summary is 
         import sklearn.manifold
@@ -95,11 +95,11 @@ class Model(pl.LightningModule):
         proj = UMAP(random_state=42)
         mus_proj = proj.fit_transform(mus) #(B,2) of tsne
         path_to_plotly_html = os.path.join(args.save_data_directory, "plotly_figure.html")
-        fig = px.scatter(x=mus_proj[:,0], y=mus_proj[:,1], color=np.epx(logstds).reshape(-1,))
+        fig = px.scatter(x=mus_proj[:,0], y=mus_proj[:,1], color=np.exp(logstds).reshape(-1,))
         fig.write_html(path_to_plotly_html, auto_play = False)
         table = wandb.Table(columns = ["plotly_figure"])
         table.add_data(wandb.Html( open(path_to_plotly_html) ))
-        wandb.log({f"{proj.__class__.__name__} Plot {self.current_epoch}": table}) #Avoids overlap!
+        wandb.log({f"{proj.__class__.__name__} Plot {title}": table}) #Avoids overlap!
             
     def on_validation_epoch_start(self, ) -> None:
 #         self.wandb_table = wandb.Table(columns=self.column_names)
@@ -132,7 +132,7 @@ class Model(pl.LightningModule):
             })
             if self.current_epoch % 10 == 0:
                 #WIP: Change modulus!
-                self.plot_manifold(self.args, mus.detach().cpu().numpy(), logstds.detach().cpu().numpy())
+                self.plot_manifold(self.args, mus.detach().cpu().numpy(), logstds.detach().cpu().numpy(), self.current_epoch)
 #         df = torch.cat(self.df) #(MultiB, latent_dim)
 #         self.wandb_table.add_data(*df.T)
 #         wandb.run.log({f"Epoch {self.current_epoch} Valid Latent Representation" : wandb.plot.scatter(self.wandb_table,
