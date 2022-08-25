@@ -90,7 +90,7 @@ def _main():
     model_configs = dict(hidden_dims_enc=[1500, 750, 400, 200, 200],
                          hidden_dims_dec=[100, 200, 400, 750, 1500],
                          unrolled_dim=unrolled_dim)
-    model = Model.Model.load_from_checkpoint( os.path.join(args.load_model_directory, args.load_model_checkpoint), args=args, model_configs=model_configs, strict=True ) if args.load_model_checkpoint else Model(args=args, model_configs=model_configs)
+    model = Model.load_from_checkpoint( os.path.join(args.load_model_directory, args.load_model_checkpoint), args=args, model_configs=model_configs, strict=True ) if args.load_model_checkpoint else Model(args=args, model_configs=model_configs)
 
     # ------------------------
     # 2 INIT EARLY STOPPING
