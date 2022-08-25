@@ -309,6 +309,7 @@ class Model(pl.LightningModule):
     def generate_molecules(self, original: "test loader original coordinates (BL3)", start_idx: "starting point index, integer", end_idx: "end point index, integer", num_interps: "num of interpolations points") -> "Original && Recon_from_original && Lerp":
         """MOVE to pl.Callback!
         WIP: Add Plotly functions!"""
+        original = original.to(self.device)
         z, mu, logstd, x = self(original) #"latend_coordinates of (B,latent_dim)"
         inputs = mu[start_idx] # dim,
         outputs = mu[end_idx] # dim,
