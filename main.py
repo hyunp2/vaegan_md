@@ -166,7 +166,7 @@ def _main():
 
     trainer = pl.Trainer(
         logger=[csv_logger],
-        max_epochs=args.max_epochs,
+        max_epochs=args.num_epochs,
         min_epochs=args.min_epochs,
         callbacks = [early_stop_callback, checkpoint_callback, swa_callback, tqdmbar_callback, timer_callback],
         precision=args.precision,
