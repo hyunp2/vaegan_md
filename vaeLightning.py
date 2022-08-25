@@ -203,8 +203,8 @@ class Model(pl.LightningModule):
         epoch_test_loss = torch.stack([x["test_loss"] for x in test_step_outputs]).mean()
         epoch_test_mse = torch.stack([x["test_mse"] for x in test_step_outputs]).mean()
         epoch_test_kl = torch.stack([x["test_kl"] for x in test_step_outputs]).mean()
-        mus = torch.cat([x["mu"] for x in validation_step_outputs], dim=0) #(b,dim) -> (B,dim)
-        logstds = torch.cat([x["logstd"] for x in validation_step_outputs], dim=0) #(b,dim) -> (B,dim)
+        mus = torch.cat([x["mu"] for x in test_step_outputs], dim=0) #(b,dim) -> (B,dim)
+        logstds = torch.cat([x["logstd"] for x in test_step_outputs], dim=0) #(b,dim) -> (B,dim)
         self.log("epoch_test_loss", epoch_test_loss)
         wandb.log({
                    'epoch_test_loss': epoch_test_loss,
