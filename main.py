@@ -32,7 +32,7 @@ def get_args():
     parser.add_argument('--name', type=str, default=None, help='Name for Wandb and GENERATED data!')  
 
     #Molecule (Dataloader) related
-    parser.add_argument('--load_data_directory', "-dird", default="/Scr/hyunpark/Monster/PL_REDO/data", help='Locate ORIGINAL data')  
+    parser.add_argument('--load_data_directory', "-dird", default="/Scr/hyunpark/Monster/vaegan_md/data", help='Locate ORIGINAL data')  
     parser.add_argument('--save_data_directory', "-sird", default="/Scr/hyunpark/Monster/vaegan_md/generated_data", help='Save GENERATED data')  
     parser.add_argument('--psf_file', '-psf', type=str, default=None, help='MDAnalysis PSF')
     parser.add_argument('--pdb_file', '-pdb', type=str, default=None, help='MDAnalysis PDB')
