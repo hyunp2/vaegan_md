@@ -133,6 +133,7 @@ class Model(pl.LightningModule):
             })
             if self.current_epoch % 10 == 0:
                 #WIP: Change modulus!
+                print(mus.shape, logstds.shape)
                 self.plot_manifold(self.args, mus.detach().cpu().numpy(), logstds.detach().cpu().numpy(), self.current_epoch)
 #         df = torch.cat(self.df) #(MultiB, latent_dim)
 #         self.wandb_table.add_data(*df.T)
