@@ -4,6 +4,7 @@ from einops.layers.torch import Rearrange
 import itertools
 import numpy as np
 import matplotlib.pyplot as plt
+from curtsies import fmtfuncs as cf
 from sklearn.manifold import TSNE
 import os
 import MDAnalysis as mda
@@ -30,14 +31,18 @@ def extract_trajectory(args):
     pdb = os.path.join(args.load_data_directory, args.pdb_file) #string
     psf = os.path.join(args.load_data_directory, args.psf_file) #string
     traj = list(map(lambda inp: os.path.join(args.load_data_directory, inp), args.trajectory_files)) #string list
-    prot_ref = mda.Universe(f"{psf}", f"{pdb}")
-    prot_traj = mda.Universe(f"{psf}", *traj)
+    prot_ref = mda.Universe(psf, pdb) 
+    prot_traj = mda.Universe(psf, *traj) 
+    prot_ref_ag = prot_ref.atoms.select_atoms(f"{atom_selection}")
+    prot_ref_ag.write(os.path.join(args.load_data_directory, os.path.splitext(args.pdb_file)[0] + "_reduced.pdb")) #write a reduced file; based on atom selection!
     reference = torch.from_numpy(prot_ref.atoms.select_atoms(f"{atom_selection}").positions)[None,:]
     coords = AnalysisFromFunction(lambda ag: ag.positions.copy(),
                                    prot_traj.atoms.select_atoms(f"{atom_selection}")).run().results['timeseries']
     trajectory = torch.from_numpy(coords) #Train
-    assert reference.ndim == coords.ndim, "Must have 3 dimensions for both REF and TRAJ..."
-    return reference, trajectory
+    assert reference.ndim == trajectory.ndim, "Must have 3 dimensions for both REF and TRAJ..."
+    assert isinstance(reference, torch.Tensor) and isinstance(trajectory, torch.Tensor), "Both reference and trajectory should be torch tensors!"
+    print(cf.on_yellow(f"Protesin has {trajectory.size(1)} atoms selected!"))
+    return reference, trajectory #Both are atom_selection (i.e. potentially reduced!)
 
 class ProteinDataset(torch.utils.data.Dataset):
     """Normalized dataset and reverse-normalization happens here..."""
