@@ -296,7 +296,7 @@ def _sample(args: argparse.ArgumentParser):
 
 if __name__ == "__main__":
     args = get_args()
-    print(args.train_mode)
+    print(args.__dict__)
     
     if args.train_mode in ["train"]:
         _main()
