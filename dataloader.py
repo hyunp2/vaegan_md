@@ -36,9 +36,9 @@ def alignTrajectory(args):
     traj = list(map(lambda inp: os.path.join(args.load_data_directory, inp), args.trajectory_files)) #string list
     prot_ref = mda.Universe(psf, pdb) #must not call PSF
     prot_traj = mda.Universe(psf, *traj) 
-    print(f"Before alignment unweighted COM: {prot_traj.atoms.positions.mean(axis=1)}")
+    print(f"Before alignment unweighted COM: {prot_traj.select_atoms(atom_selection).positions.mean(axis=1)}")
     AlignTraj(prot_traj, prot_ref, select=args.atom_selection, in_memory=True).run()
-    print(f"After alignment unweighted COM: {prot_traj.atoms.positions.mean(axis=1)}")
+    print(f"After alignment unweighted COM: {prot_traj.select_atoms(atom_selection).positions.mean(axis=1)}")
     return prot_traj, prot_ref, atom_selection #in-memory modifed!
     
 def extract_trajectory(args):
