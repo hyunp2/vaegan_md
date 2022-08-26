@@ -36,28 +36,22 @@ def alignTrajectory(args):
     traj = list(map(lambda inp: os.path.join(args.load_data_directory, inp), args.trajectory_files)) #string list
     prot_ref = mda.Universe(psf, pdb) #must not call PSF
     prot_traj = mda.Universe(psf, *traj) 
-    print(prot_traj.atoms.positions.mean(axis=1))
+    print(f"Before alignment unweighted COM: {prot_traj.atoms.positions.mean(axis=1)}")
     AlignTraj(prot_traj, prot_ref, select=args.atom_selection, in_memory=True).run()
-    print(prot_traj.atoms.positions.mean(axis=1))
+    print(f"After alignment unweighted COM: {prot_traj.atoms.positions.mean(axis=1)}")
+    return prot_traj, prot_ref, atom_selection #in-memory modifed!
     
 def extract_trajectory(args):
-    atom_selection = args.atom_selection
-    assert args.pdb_file != None and args.psf_file != None, "both PDB and PSF must be provides..."
-    #PDB.set_trace()
-    print(args.load_data_directory, args.pdb_file, os.path.join(args.load_data_directory, args.pdb_file))
-    pdb = os.path.join(args.load_data_directory, args.pdb_file) #string
-    psf = os.path.join(args.load_data_directory, args.psf_file) #string
-    traj = list(map(lambda inp: os.path.join(args.load_data_directory, inp), args.trajectory_files)) #string list
-    prot_ref = mda.Universe(pdb) #must not call PSF
-    prot_traj = mda.Universe(psf, *traj) 
-    prot_ref_ag = prot_ref.atoms.select_atoms(f"{atom_selection}")
+    prot_traj, prot_ref, atom_selection = alignTrajectory(args) #Aligned prot_traj in-memory
+    prot_ref_ag = prot_ref.atoms.select_atoms(atom_selection) 
+    print("Returning RMSD aligned universe instances...")
     
     reduced_pdb_file = os.path.join(args.load_data_directory, os.path.splitext(args.pdb_file)[0] + "_reduced.pdb")
 #     if not os.path.exists(reduced_pdb_file):
     prot_ref_ag.write(reduced_pdb_file) #write a reduced file; based on atom selection!
 #     else:
 #         pass
-    reference = torch.from_numpy(prot_ref.atoms.select_atoms(f"{atom_selection}").positions)[None,:]
+    reference = torch.from_numpy(prot_ref_ag.positions)[None,:]
     coords = AnalysisFromFunction(lambda ag: ag.positions.copy(),
                                    prot_traj.atoms.select_atoms(f"{atom_selection}")).run().results['timeseries']
     trajectory = torch.from_numpy(coords) #Train
