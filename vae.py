@@ -124,6 +124,7 @@ class VAE(torch.nn.Module):
 #         recon_mat = torch.cdist(recon, recon, p=2)
 #         mat = 0.5*(inputs_mat - recon_mat).pow(2).sum(dim=(-1,-2)).mean() #Pairwise distance loss
 #         return kl, mse, rmsd, tm, mat
+        print(mse.size(), kl.size())
         assert mse.size(0) == kl.size(0) and mse.ndim == kl.ndim and mse.ndim == 1, "all criteria for shape must match"
         return mse, kl
 
