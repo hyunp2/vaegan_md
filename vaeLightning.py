@@ -71,8 +71,9 @@ class Model(pl.LightningModule):
                    'train_mse': mse.item(),
                    })
         loss = (mse - kl)
+        loss = loss.mean()
         self.log("train_loss", loss, prog_bar=True)
-        return {"loss": loss, "train_kl": kl, "train_mse": mse}
+        return {"loss": loss, "train_kl": kl.mean(), "train_mse": mse.mean()}
 
     def training_epoch_end(self, training_step_outputs):
 #         if not self.trainer.sanity_checking:
@@ -159,8 +160,9 @@ class Model(pl.LightningModule):
                    'val_mse': mse.item(),
                    })
         loss = (mse - kl)
+        loss = loss.mean()
         self.log("val_loss", loss, prog_bar=True)
-        return {"val_loss": loss, "val_kl": kl, "val_mse": mse, "mu": mu, "logstd": logstd}
+        return {"val_loss": loss, "val_kl": kl.mean(), "val_mse": mse.mean(), "mu": mu, "logstd": logstd}
 
     def validation_epoch_end(self, validation_step_outputs):
 #         if not self.trainer.sanity_checking:
@@ -195,8 +197,9 @@ class Model(pl.LightningModule):
                    'test_mse': mse.item(),
                    })
         loss = (mse - kl)
+        loss = loss.mean()
         self.log("test_loss", loss, prog_bar=True)
-        return {"test_loss": loss, "test_kl": kl, "test_mse": mse, "mu": mu, "logstd": logstd}
+        return {"test_loss": loss, "test_kl": kl.mean(), "test_mse": mse.mean(), "mu": mu, "logstd": logstd}
 
     def test_epoch_end(self, test_step_outputs):
 #         if not self.trainer.sanity_checking:
@@ -324,7 +327,7 @@ class Model(pl.LightningModule):
         recon  = unnormalize(recon_scaled, mean=mean, std=std) #BL3, test_loader latent to reconstruction (raw coord)
         lerps_recon_scaled = self.model_block.decoder(lerps.to(mu)) #BL3, lerped to reconstruction (scaled coord)
         lerps_recon  = unnormalize(lerps_recon_scaled, mean=mean, std=std) #BL3, test_loader latent to reconstruction (raw coord)
-        print(original_unscaled, recon)
+#         print(original_unscaled, recon)
         colors = torch.cat([torch.LongTensor([i*10] * tensor.size(0)) for i, tensor in enumerate([original, recon, lerps_recon]) ], dim=0).detach().cpu().numpy()
         traj_cats = torch.cat([original, recon, lerps_recon], dim=0) #.detach().cpu().numpy() #BBB,L,3
         _, mus, logstds, _ = self(traj_cats)
