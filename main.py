@@ -37,7 +37,6 @@ def get_args():
     parser.add_argument('--psf_file', '-psf', type=str, default=None, help='MDAnalysis PSF')
     parser.add_argument('--pdb_file', '-pdb', type=str, default=None, help='MDAnalysis PDB')
     parser.add_argument('--trajectory_files', '-traj', type=str, nargs='*', default=None, help='MDAnalysis Trajectories')
-    parser.add_argument('--molecule', type=str, default="alanine-dipeptide", help='Which molecule to analyze')
     parser.add_argument('--atom_selection', '-asel', type=str, default="all", help='MDAnalysis atom selection')
     parser.add_argument('--split_portion', '-spl', type=int, default=80, help='Torch dataloader and Pytorch lightning split of batches')
 
