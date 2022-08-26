@@ -44,7 +44,7 @@ def get_args():
     #Optimizer related
     parser.add_argument('--num_epochs', default=100, type=int, help='number of epochs')
     parser.add_argument('--batch_size', '-b', default=128, type=int, help='batch size')
-    parser.add_argument('--lr', default=1e-3, type=float, help='learning rate')
+    parser.add_argument('--lr', default=1e-2, type=float, help='learning rate')
     parser.add_argument('--ngpus', type=int, default=-1, help='Number of GPUs, -1 use all available. Use CUDA_VISIBLE_DEVICES=1, to decide gpus')
     parser.add_argument('--num_nodes', type=int, default=1, help='Number of nodes')
     parser.add_argument('--warm_up_split', type=int, default=5, help='warmup times')
