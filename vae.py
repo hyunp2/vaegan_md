@@ -81,7 +81,7 @@ class Decoder(torch.nn.Module):
         sizes = (1, self.unrolled_dim//3, 3) #1,L,3
         x = inputs #Latent dim
         x = self.linears_sequential(x)
-        x = 3*torch.tanh(x)
+#         x = 3*torch.tanh(x)
         x_q = x.view(x.size(0), sizes[1], sizes[2]) #+ pos_emb #B,L,3 
         return x_q #, attns
 
@@ -113,8 +113,8 @@ class VAE(torch.nn.Module):
     @staticmethod
     def losses(inputs, z, mu, logstd, recon: "x", beta):
 #         rmsd = torch.sqrt(torch.mean((inputs - recon)**2, dim=(-1, -2))).mean() #rmsd
-        mse = torch.nn.MSELoss(reduction="mean")(recon, inputs)
-        kl = torch.mean(beta * 0.5 * torch.sum(1 + logstd - mu ** 2 - logstd.exp(), dim = 1), dim = 0)  #kl-div
+        mse = torch.nn.MSELoss(reduction="none")(recon, inputs) # -> (B,)
+        kl = beta * 0.5 * torch.sum(1 + logstd - mu ** 2 - logstd.exp(), dim = 1)  #kl-div (NOT a LOSS yet!); -> (B,)
 #         L = max(15, inputs.shape[-2])
 #         d0 = 1.24 * (L - 15)**(1/3) - 1.8
 #         # get distance
@@ -124,6 +124,7 @@ class VAE(torch.nn.Module):
 #         recon_mat = torch.cdist(recon, recon, p=2)
 #         mat = 0.5*(inputs_mat - recon_mat).pow(2).sum(dim=(-1,-2)).mean() #Pairwise distance loss
 #         return kl, mse, rmsd, tm, mat
+        assert mse.size(0) == kl.size(0) and mse.ndim == kl.ndim and mse.ndim == 1, "all criteria for shape must match"
         return mse, kl
 
     def _init_weights(self, m: torch.nn.Module):
