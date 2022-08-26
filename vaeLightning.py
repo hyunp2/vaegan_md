@@ -156,8 +156,8 @@ class Model(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         mse, kl, z, mu, logstd, x = self._shared_step(batch, batch_idx, return_metadata=True)
         wandb.log({
-                   'val_kl': kl.item(),
-                   'val_mse': mse.item(),
+                   'val_kl': kl.mean().item(),
+                   'val_mse': mse.mean().item(),
                    })
         loss = (mse - kl)
         loss = loss.mean()
@@ -193,8 +193,8 @@ class Model(pl.LightningModule):
     def test_step(self, batch, batch_idx):
         mse, kl, z, mu, logstd, x = self._shared_step(batch, batch_idx, return_metadata=True)
         wandb.log({
-                   'test_kl': kl.item(),
-                   'test_mse': mse.item(),
+                   'test_kl': kl.mean().item(),
+                   'test_mse': mse.mean().item(),
                    })
         loss = (mse - kl)
         loss = loss.mean()
