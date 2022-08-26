@@ -41,7 +41,7 @@ class Model(pl.LightningModule):
         self.data_std = None
         self.loader_length = None
         
-        wandb.init(project="VAEGAN_MD", entity="hyunp2", name=args.name)
+        wandb.init(project="VAEGAN_MD", entity="hyunp2", name=args.name, group="DDP_runs")
         wandb.watch(self.model_block, log="all")
 
 #         latent_dim = self.model_block.decoder.hidden_dims[0] #2, 3, etc.
@@ -232,7 +232,7 @@ class Model(pl.LightningModule):
 #                             *self.column_names)})
 
     def configure_optimizers(self):
-        optimizer = tfm.AdamW(self.model_block.parameters(), lr=self.args.lr)
+        optimizer = torch.optim.AdamW(self.model_block.parameters(), lr=self.args.lr)
         total_training_steps = self.loader_length * self.args.num_epochs
         warmup_steps = total_training_steps // self.args.warm_up_split
         if self.args.scheduler == "cosine":
