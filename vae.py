@@ -104,7 +104,8 @@ class VAE(torch.nn.Module):
 #         self.decoder = Decoder(hidden_dims=self.hidden_dims_dec, reference=self.reference, rolled_dim=self.rolled_dim, unrolled_dim=self.unrolled_dim, mha_dimension=self.mha_dimension, nheads=self.nheads, layers=self.layers)
         self.decoder = Decoder(hidden_dims=self.hidden_dims_dec, unrolled_dim=self.unrolled_dim)
 #         self.apply(self._init_weights)
-        
+        self.reset_all_weights()
+    
     def forward(self, inputs: "Trajectory"):
         x = inputs #Normalized input
         z, mu, logstd = self.encoder(x)
@@ -129,9 +130,21 @@ class VAE(torch.nn.Module):
         assert mse.size(0) == kl.size(0) and mse.ndim == kl.ndim and mse.ndim == 1, "all criteria for shape must match"
         return mse, kl
 
-    def _init_weights(self, m: torch.nn.Module):
-        if isinstance(m, torch.nn.Linear):
-            m.weight.data.normal_(1,0.)
-            m.bias.data.zero_()
+    def reset_all_weights(self, ) -> None:
+        """
+        refs:
+        - https://discuss.pytorch.org/t/how-to-re-set-alll-parameters-in-a-network/20819/6
+        - https://stackoverflow.com/questions/63627997/reset-parameters-of-a-neural-network-in-pytorch
+        - https://pytorch.org/docs/stable/generated/torch.nn.Module.html
+        """
 
+        @torch.no_grad()
+        def weight_reset(m: torch.nn.Module):
+             # - check if the current module has reset_parameters & if it's callabed called it on m
+            reset_parameters = getattr(m, "reset_parameters", None)
+            if callable(reset_parameters):
+                m.reset_parameters()
+
+        # Applies fn recursively to every submodule see: https://pytorch.org/docs/stable/generated/torch.nn.Module.html
+        self.apply(fn=weight_reset)
 
