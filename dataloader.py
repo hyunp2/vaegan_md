@@ -21,9 +21,11 @@ from MDAnalysis.analysis.base import AnalysisFromFunction
 # import main as Main
 import pdb as PDB
 from MDAnalysis.analysis.align import AlignTraj
+import ray
 
 __all__ = ["DataModule"]
 
+# @ray.remote
 def alignTrajectory(args):
     atom_selection = args.atom_selection
     assert args.pdb_file != None and args.psf_file != None, "both PDB and PSF must be provides..."
@@ -34,9 +36,9 @@ def alignTrajectory(args):
     traj = list(map(lambda inp: os.path.join(args.load_data_directory, inp), args.trajectory_files)) #string list
     prot_ref = mda.Universe(psf, pdb) #must not call PSF
     prot_traj = mda.Universe(psf, *traj) 
-    print(prot_traj.atoms.positions.shape)
+    print(prot_traj.atoms.positions.mean(axis=1))
     AlignTraj(prot_traj, prot_ref, select=args.atom_selection, in_memory=True).run()
-    print(prot_traj.atoms.positions.shape)
+    print(prot_traj.atoms.positions.mean(axis=1))
     
 def extract_trajectory(args):
     atom_selection = args.atom_selection
@@ -133,6 +135,14 @@ class DataModule(pl.LightningDataModule):
 if __name__ == "__main__":
     from main import get_args
     args = get_args()
+
+#     params = list(zip(itertools.repeat(lipid_analysis),
+#                     itertools.repeat(n_workers),
+#                     range(n_workers)))
+#     ray.init()
+    
+#     futures = [parallelize_run.remote(*par) for par in params]
+#     analyses = ray.get(futures)
     alignTrajectory(args)
     
     
