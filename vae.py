@@ -103,7 +103,8 @@ class VAE(torch.nn.Module):
         self.encoder = Encoder(hidden_dims=self.hidden_dims_enc, unrolled_dim=self.unrolled_dim)
 #         self.decoder = Decoder(hidden_dims=self.hidden_dims_dec, reference=self.reference, rolled_dim=self.rolled_dim, unrolled_dim=self.unrolled_dim, mha_dimension=self.mha_dimension, nheads=self.nheads, layers=self.layers)
         self.decoder = Decoder(hidden_dims=self.hidden_dims_dec, unrolled_dim=self.unrolled_dim)
-
+        self.apply(self._init_weights)
+        
     def forward(self, inputs: "Trajectory"):
         x = inputs #Normalized input
         z, mu, logstd = self.encoder(x)
@@ -130,7 +131,7 @@ class VAE(torch.nn.Module):
 
     def _init_weights(self, m: torch.nn.Module):
         if isinstance(m, torch.nn.Linear):
-            m.weight.data.normal_(1,0.5)
+            m.weight.data.normal_(1,0.)
             m.bias.data.zero_()
 
 
