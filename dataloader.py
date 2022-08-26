@@ -20,9 +20,24 @@ from MDAnalysis.coordinates.memory import MemoryReader
 from MDAnalysis.analysis.base import AnalysisFromFunction
 # import main as Main
 import pdb as PDB
+from MDAnalysis.analysis.align import AlignTraj
 
 __all__ = ["DataModule"]
 
+def alignTrajectory(args):
+    atom_selection = args.atom_selection
+    assert args.pdb_file != None and args.psf_file != None, "both PDB and PSF must be provides..."
+    #PDB.set_trace()
+    print(args.load_data_directory, args.pdb_file, os.path.join(args.load_data_directory, args.pdb_file))
+    pdb = os.path.join(args.load_data_directory, args.pdb_file) #string
+    psf = os.path.join(args.load_data_directory, args.psf_file) #string
+    traj = list(map(lambda inp: os.path.join(args.load_data_directory, inp), args.trajectory_files)) #string list
+    prot_ref = mda.Universe(psf, pdb) #must not call PSF
+    prot_traj = mda.Universe(psf, *traj) 
+    print(prot_traj.atoms.positions.shape)
+    AlignTraj(prot_traj, prot_ref, select=args.atom_selection, in_memory=True).run()
+    print(prot_traj.atoms.positions.shape)
+    
 def extract_trajectory(args):
     atom_selection = args.atom_selection
     assert args.pdb_file != None and args.psf_file != None, "both PDB and PSF must be provides..."
@@ -116,7 +131,11 @@ class DataModule(pl.LightningDataModule):
         return torch.utils.data.DataLoader(self.testset, shuffle=False, num_workers=self.num_workers, batch_size=self.batch_size, drop_last=False, pin_memory=True)
 
 if __name__ == "__main__":
-    pass
+    from main import get_args
+    args = get_args()
+    alignTrajectory(args)
+    
+    
 #     args = Main.get_args()
 #     args.batch_size = 50
 #     reference, trajectory = extract_trajectory(args)
