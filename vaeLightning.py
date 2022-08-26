@@ -67,8 +67,8 @@ class Model(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         mse, kl = self._shared_step(batch, batch_idx)
         wandb.log({
-                   'train_kl': kl.item(),
-                   'train_mse': mse.item(),
+                   'train_kl': kl.mean().item(),
+                   'train_mse': mse.mean().item(),
                    })
         loss = (mse - kl)
         loss = loss.mean()
