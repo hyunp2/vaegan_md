@@ -174,6 +174,7 @@ def _main():
         deterministic=False,
         default_root_dir=args.load_model_directory,
         num_sanity_val_steps = args.sanity_checks,
+        check_val_every_n_epoch=4,
         log_every_n_steps=4,
         gradient_clip_algorithm="norm",
         accumulate_grad_batches=args.gradient_accm,
