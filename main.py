@@ -104,7 +104,7 @@ def _main():
     early_stop_callback = pl.callbacks.EarlyStopping(
         monitor=args.monitor,
         min_delta=0.0,
-        patience=args.patience,
+        patience=100,
         verbose=True,
         mode=args.metric_mode,
     )
