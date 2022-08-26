@@ -319,6 +319,7 @@ class Model(pl.LightningModule):
         std = self.data_std
         unnormalize = dl.ProteinDataset.unnormalize #static method
 
+        original_unscaled = unnormalize(original, mean=mean, std=std)
         recon_scaled = self.model_block.decoder(mu) #BL3, (scaled coord)
         recon  = unnormalize(recon_scaled, mean=mean, std=std) #BL3, test_loader latent to reconstruction (raw coord)
         lerps_recon_scaled = self.model_block.decoder(lerps.to(mu)) #BL3, lerped to reconstruction (scaled coord)
@@ -334,7 +335,8 @@ class Model(pl.LightningModule):
         atom_selection = self.args.atom_selection
     
         u = mda.Universe(pdb) #universe
-        u.load_new(original.detach().cpu().numpy()) #overwrite coords
+        
+        u.load_new(original_unscaled.detach().cpu().numpy()) #overwrite coords
         mda_traj_name = os.path.join(self.args.save_data_directory, self.args.name + "_test.dcd") if self.args.name is not None else os.path.join(self.args.save_data_directory, os.path.splitext(self.args.pdb_file)[0] + "_reduced" + "_test.dcd")
         with mda.Writer(mda_traj_name, u.atoms.n_atoms) as w:
             for ts in u.trajectory:
