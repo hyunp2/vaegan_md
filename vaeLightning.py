@@ -324,7 +324,7 @@ class Model(pl.LightningModule):
         recon  = unnormalize(recon_scaled, mean=mean, std=std) #BL3, test_loader latent to reconstruction (raw coord)
         lerps_recon_scaled = self.model_block.decoder(lerps.to(mu)) #BL3, lerped to reconstruction (scaled coord)
         lerps_recon  = unnormalize(lerps_recon_scaled, mean=mean, std=std) #BL3, test_loader latent to reconstruction (raw coord)
-        
+        print(original_unscaled, recon)
         colors = torch.cat([torch.LongTensor([i*10] * tensor.size(0)) for i, tensor in enumerate([original, recon, lerps_recon]) ], dim=0).detach().cpu().numpy()
         traj_cats = torch.cat([original, recon, lerps_recon], dim=0) #.detach().cpu().numpy() #BBB,L,3
         _, mus, logstds, _ = self(traj_cats)
@@ -335,7 +335,6 @@ class Model(pl.LightningModule):
         atom_selection = self.args.atom_selection
     
         u = mda.Universe(pdb) #universe
-        
         u.load_new(original_unscaled.detach().cpu().numpy()) #overwrite coords
         mda_traj_name = os.path.join(self.args.save_data_directory, self.args.name + "_test.dcd") if self.args.name is not None else os.path.join(self.args.save_data_directory, os.path.splitext(self.args.pdb_file)[0] + "_reduced" + "_test.dcd")
         with mda.Writer(mda_traj_name, u.atoms.n_atoms) as w:
