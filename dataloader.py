@@ -38,7 +38,7 @@ def alignTrajectory(args):
     prot_traj = mda.Universe(psf, *traj) 
     print(prot_traj.atoms.positions.mean(axis=1))
     AlignTraj(prot_traj, prot_ref, select=args.atom_selection, in_memory=True).run()
-    print(prot_traj.atoms.positions..mean(axis=1))
+    print(prot_traj.atoms.positions.mean(axis=1))
     
 def extract_trajectory(args):
     atom_selection = args.atom_selection
