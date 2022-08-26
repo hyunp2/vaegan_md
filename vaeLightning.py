@@ -177,7 +177,7 @@ class Model(pl.LightningModule):
                    'epoch_val_mse': epoch_val_mse,
                    'epoch_val_kl': epoch_val_kl,
         })
-        if self.current_epoch % 10 == 0:
+        if self.current_epoch % 100 == 0:
             #WIP: Change modulus!
             print(mus.shape, logstds.shape)
             self.plot_manifold(self.args, mus.detach().cpu().numpy(), logstds.detach().cpu().numpy(), self.current_epoch)
