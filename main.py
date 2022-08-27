@@ -71,11 +71,8 @@ def get_args():
     args = parser.parse_args()
     return args
 
-def _main():
-    args = get_args()
-    
+def data_and_model(args):
     pl.seed_everything(args.seed)
-    
     # ------------------------
     # 0 MAKE REDUCED PDB
     # ------------------------
@@ -97,6 +94,31 @@ def _main():
                          unrolled_dim=unrolled_dim)
     model = Model.load_from_checkpoint( os.path.join(args.load_model_directory, args.load_model_checkpoint), args=args, model_configs=model_configs, strict=True ) if args.load_model_checkpoint else Model(args=args, model_configs=model_configs)
 
+    # ------------------------
+    # MISC.
+    # ------------------------
+    if args.load_model_checkpoint:
+        resume_ckpt = os.path.join(args.load_model_directory, args.load_model_checkpoint)
+    else:
+        resume_ckpt = None
+        
+    if args.strategy in ["none", None]:
+        args.strategy = None
+    
+    train_dataloaders, val_dataloaders, test_dataloaders = datamodule.train_dataloader(), datamodule.val_dataloader(), datamodule.test_dataloader()
+    [setattr(model, key, val) for key, val in zip(["data_mean", "data_std", "loader_length"], [datamodule.mean, datamodule.std, datamodule.trajectory.size(0) ])] #set mean and std
+    print("Model's dataset mean and std are set:", model.data_mean, " and ", model.data_std)
+    
+    if args.train_mode == "train":
+        return train_dataloaders, val_dataloaders, model, resume_ckpt, args
+    if args.train_mode in ["test", "pred", "sample"]:
+        return test_dataloaders, model, resume_ckpt, args
+
+def _main():
+    args = get_args()
+    
+    train_dataloaders, val_dataloaders, model, resume_ckpt, args = data_and_model(args)
+    
     # ------------------------
     # 2 INIT EARLY STOPPING
     # ------------------------
@@ -148,21 +170,6 @@ def _main():
     csv_logger = pl.loggers.CSVLogger(save_dir=args.load_model_directory)
 #     plugins = DDPPlugin(find_unused_parameters=False) if hparams.accelerator == "ddp" else None
     
-    # ------------------------
-    # MISC.
-    # ------------------------
-    if args.load_model_checkpoint:
-        resume_ckpt = os.path.join(args.load_model_directory, args.load_model_checkpoint)
-    else:
-        resume_ckpt = None
-        
-    if args.strategy in ["none", None]:
-        args.strategy = None
-    
-    train_dataloaders, val_dataloaders = datamodule.train_dataloader(), datamodule.val_dataloader()
-    [setattr(model, key, val) for key, val in zip(["data_mean", "data_std", "loader_length"], [datamodule.mean, datamodule.std, datamodule.trajectory.size(0) ])] #set mean and std
-    print("Model's dataset mean and std are set:", model.data_mean, " and ", model.data_std)
-
     trainer = pl.Trainer(
         logger=[csv_logger],
         max_epochs=args.num_epochs,
@@ -182,50 +189,14 @@ def _main():
         strategy=args.strategy,
         accelerator=args.accelerator,
         auto_select_gpus=True,
-        
     )
 
     trainer.fit(model, train_dataloaders, val_dataloaders, ckpt_path=resume_ckpt) #New API!
     
 def _test(args: argparse.ArgumentParser):
-#     hparams = get_args()
-
-    pl.seed_everything(args.seed)
-
-    # ------------------------
-    # 0 MAKE REDUCED PDB
-    # ------------------------
-    datamodule = dl.DataModule(args)
-    datamodule.setup()
-    
-    # ------------------------
-    # 1 INIT LIGHTNING MODEL
-    # ------------------------
-    atom_selection = args.atom_selection
-    pdb = os.path.join(args.load_data_directory, os.path.splitext(args.pdb_file)[0] + "_reduced.pdb") #string
-#     psf = os.path.join(args.load_data_directory, args.psf_file) #string
-    prot_ref = mda.Universe(pdb) #PSF must not be considered
-    pos = prot_ref.atoms.select_atoms(atom_selection).positions #L,3; Does not affect anymore since Datamodule already takes care of it!
-    unrolled_dim = pos.shape[0] * pos.shape[1]
-    
-    model_configs = dict(hidden_dims_enc=[2000, 500, 100, 50, 6],
-                         hidden_dims_dec=[3, 50, 100, 500, 2000],
-                         unrolled_dim=unrolled_dim)
-    model = Model.load_from_checkpoint( os.path.join(args.load_model_directory, args.load_model_checkpoint), args=args, model_configs=model_configs, strict=True ) if args.load_model_checkpoint else Model(args=args, model_configs=model_configs)
-    
-    if args.load_model_checkpoint:
-        resume_ckpt = os.path.join(args.load_model_directory, args.load_model_checkpoint)
-    else:
-        resume_ckpt = None
-        
-    if args.strategy in ["none", None]:
-        args.strategy = None
+    test_dataloaders, model, resume_ckpt, args = data_and_model(args)
         
     csv_logger = pl.loggers.CSVLogger(save_dir=args.load_model_directory)
-
-    test_dataloaders = datamodule.test_dataloader()
-    [setattr(model, key, val) for key, val in zip(["data_mean", "data_std", "loader_length"], [datamodule.mean, datamodule.std, datamodule.trajectory.size(0) ])] #set mean and std
-    print("Model's dataset mean and std are set:", model.data_mean, " and ", model.data_std)
     
     trainer = pl.Trainer(
         logger=[csv_logger],
@@ -248,48 +219,14 @@ def _test(args: argparse.ArgumentParser):
     if args.train_mode in ["test"]:
         trainer.test(model, dataloaders=test_dataloaders, ckpt_path=resume_ckpt) #New API!
     elif args.train_mode in ["pred"]:
-        test_dataloader = model.test_dataloader()
-        trainer.predict(model, dataloaders=test_dataloaders, ckpt_path=resume_ckpt)
+        pass
+#         test_dataloader = model.test_dataloader()
+#         trainer.predict(model, dataloaders=test_dataloaders, ckpt_path=resume_ckpt)
         
 def _sample(args: argparse.ArgumentParser):
-    pl.seed_everything(args.seed)
-
-    # ------------------------
-    # 0 MAKE REDUCED PDB
-    # ------------------------
     args.batch_size = 1000 #Randomly big number
-    datamodule = dl.DataModule(args)
-    datamodule.setup()
-    
-    # ------------------------
-    # 1 INIT LIGHTNING MODEL
-    # ------------------------
-    atom_selection = args.atom_selection
-    pdb = os.path.join(args.load_data_directory, os.path.splitext(args.pdb_file)[0] + "_reduced.pdb") #string
-#     psf = os.path.join(args.load_data_directory, args.psf_file) #string
-    prot_ref = mda.Universe(pdb) #PSF must not be considered
-    pos = prot_ref.atoms.select_atoms(atom_selection).positions #L,3; Does not affect anymore since Datamodule already takes care of it!
-    unrolled_dim = pos.shape[0] * pos.shape[1]
-    
-    model_configs = dict(hidden_dims_enc=[2000, 500, 100, 50, 6],
-                         hidden_dims_dec=[3, 50, 100, 500, 2000],
-                         unrolled_dim=unrolled_dim)
-    model = Model.load_from_checkpoint( os.path.join(args.load_model_directory, args.load_model_checkpoint), args=args, model_configs=model_configs, strict=True ) if args.load_model_checkpoint else Model(args=args, model_configs=model_configs)
-    
-    if args.load_model_checkpoint:
-        resume_ckpt = os.path.join(args.load_model_directory, args.load_model_checkpoint)
-    else:
-        resume_ckpt = None
-        
-    if args.strategy in ["none", None]:
-        args.strategy = None
-        
-    csv_logger = pl.loggers.CSVLogger(save_dir=args.load_model_directory)
+    test_dataloaders, model, resume_ckpt, args = data_and_model(args)
 
-    test_dataloaders = datamodule.test_dataloader()
-    [setattr(model, key, val) for key, val in zip(["data_mean", "data_std", "loader_length"], [datamodule.mean, datamodule.std, datamodule.trajectory.size(0) ])] #set mean and std
-    print("Model's dataset mean and std are set:", model.data_mean, " and ", model.data_std)
-    
     input_coords = iter(test_dataloaders).next() #Will be Shuffled although!!!
     model.generate_molecules(input_coords, 0, -1, 200) #Generate recon and interp
 
