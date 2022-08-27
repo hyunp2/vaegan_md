@@ -92,8 +92,8 @@ def _main():
     pos = prot_ref.atoms.select_atoms(atom_selection).positions #L,3; Does not affect anymore since Datamodule already takes care of it!
     unrolled_dim = pos.shape[0] * pos.shape[1]
     
-    model_configs = dict(hidden_dims_enc=[1000, 500, 100, 50, 4],
-                         hidden_dims_dec=[2, 50, 100, 500, 1000],
+    model_configs = dict(hidden_dims_enc=[2000, 500, 100, 50, 6],
+                         hidden_dims_dec=[3, 50, 100, 500, 2000],
                          unrolled_dim=unrolled_dim)
     model = Model.load_from_checkpoint( os.path.join(args.load_model_directory, args.load_model_checkpoint), args=args, model_configs=model_configs, strict=True ) if args.load_model_checkpoint else Model(args=args, model_configs=model_configs)
 
@@ -208,8 +208,8 @@ def _test(args: argparse.ArgumentParser):
     pos = prot_ref.atoms.select_atoms(atom_selection).positions #L,3; Does not affect anymore since Datamodule already takes care of it!
     unrolled_dim = pos.shape[0] * pos.shape[1]
     
-    model_configs = dict(hidden_dims_enc=[1000, 500, 100, 50, 4],
-                         hidden_dims_dec=[2, 50, 100, 500, 1000],
+    model_configs = dict(hidden_dims_enc=[2000, 500, 100, 50, 6],
+                         hidden_dims_dec=[3, 50, 100, 500, 2000],
                          unrolled_dim=unrolled_dim)
     model = Model.load_from_checkpoint( os.path.join(args.load_model_directory, args.load_model_checkpoint), args=args, model_configs=model_configs, strict=True ) if args.load_model_checkpoint else Model(args=args, model_configs=model_configs)
     
