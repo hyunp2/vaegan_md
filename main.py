@@ -189,9 +189,16 @@ def _main():
         strategy=args.strategy,
         accelerator=args.accelerator,
         auto_select_gpus=True,
+        resume_from_checkpoint=resume_ckpt
     )
-
-    trainer.fit(model, train_dataloaders, val_dataloaders, ckpt_path=resume_ckpt) #New API!
+    
+    for idx, callback in enumerate(trainer.callbacks):
+        if isinstance(callback,  pl.callbacks.early_stopping.EarlyStopping):
+            trainer.callbacks[idx].patience = args.num_epochs
+        else:
+            pass
+        
+    trainer.fit(model, train_dataloaders, val_dataloaders) #New API!
     
 def _test(args: argparse.ArgumentParser):
     test_dataloaders, model, resume_ckpt, args = data_and_model(args)
