@@ -112,7 +112,7 @@ def data_and_model(args):
     if args.train_mode == "train":
         return train_dataloaders, val_dataloaders, model, resume_ckpt, args
     if args.train_mode in ["test", "pred", "sample"]:
-        return test_dataloaders, model, resume_ckpt, args
+        return val_dataloaders, test_dataloaders, model, resume_ckpt, args
 
 def _main():
     args = get_args()
@@ -201,7 +201,7 @@ def _main():
     trainer.fit(model, train_dataloaders, val_dataloaders) #New API!
     
 def _test(args: argparse.ArgumentParser):
-    test_dataloaders, model, resume_ckpt, args = data_and_model(args)
+    val_dataloaders, test_dataloaders, model, resume_ckpt, args = data_and_model(args)
         
     csv_logger = pl.loggers.CSVLogger(save_dir=args.load_model_directory)
     
@@ -232,9 +232,9 @@ def _test(args: argparse.ArgumentParser):
         
 def _sample(args: argparse.ArgumentParser):
     args.batch_size = 1000 #Randomly big number
-    test_dataloaders, model, resume_ckpt, args = data_and_model(args)
+    val_dataloaders, test_dataloaders, model, resume_ckpt, args = data_and_model(args)
 
-    input_coords = iter(test_dataloaders).next() #Will be Shuffled although!!!
+    input_coords = iter(val_dataloaders).next() #Will be Shuffled although!!!
     model.generate_molecules(input_coords, 0, -1, 200) #Generate recon and interp
 
 if __name__ == "__main__":
